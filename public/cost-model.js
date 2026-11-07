@@ -25,6 +25,7 @@ export const GLOBAL_VENDOR_PRICES = Object.freeze({
   '531060003': 1000,  // Speed Scroll
   '531060004': 1000,  // Courage Scroll
   '531060027': 1000,  // Benediction Scroll
+  '630554001': 220,   // Sugar
   '630554005': 880,   // Verteron Pepper
   '630554011': 880,   // Altgard Pepper
   '630554003': 880,   // Ulmus Oil

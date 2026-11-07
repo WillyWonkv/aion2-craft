@@ -7,6 +7,8 @@ const formatAttempts = value => Number(value).toLocaleString('it-IT', { maximumF
 const formatPercent = value => Number(value).toLocaleString('it-IT', { maximumFractionDigits: 2 });
 const MAX_CRAFT_SUCCESS = 0.9464;
 const MAX_COMBO_SUCCESS = 0.23 / (MAX_CRAFT_SUCCESS * 0.25);
+const MARKET_TAX_RATE = 0.10;
+const netSale = value => value == null ? null : Number(value) * (1 - MARKET_TAX_RATE);
 const QUICK_PRICE_ITEMS = [
   '610511013', '610511015', '610511014',
   '610610013', '610610014', '610610015', '610610016',
@@ -35,12 +37,17 @@ function nameOf(key) {
   return item?.n || state.prices.get(String(key))?.name || String(key);
 }
 
+function gradeClass(key) {
+  const grade = state.graph?.items?.[String(key)]?.g;
+  return grade ? ' grade-' + grade : '';
+}
+
 function iconOf(key, extraClass = '') {
   const item = state.graph?.items?.[String(key)];
   const url = item?.icon;
   if (!url) return document.createElement('span');
   const image = document.createElement('img');
-  image.className = 'itemIcon' + (item?.g ? ' grade-' + item.g : '') + (extraClass ? ' ' + extraClass : '');
+  image.className = 'itemIcon' + gradeClass(key) + (extraClass ? ' ' + extraClass : '');
   image.src = url;
   image.alt = '';
   image.loading = 'lazy';
@@ -55,10 +62,77 @@ function renderQuickPrices() {
     const market = state.prices.get(key);
     const card = document.createElement('article'); card.className = 'quickPrice';
     const text = document.createElement('div');
-    const name = document.createElement('span'); name.className = 'quickPriceName'; name.textContent = nameOf(key); name.title = name.textContent;
+    const name = document.createElement('span'); name.className = 'quickPriceName itemGrade' + gradeClass(key); name.textContent = nameOf(key); name.title = name.textContent;
     const price = document.createElement('strong'); price.textContent = market?.price == null ? '—' : format(Number(market.price)) + ' Kina';
     const listings = document.createElement('small'); listings.textContent = market ? (market.listings || 0) + ' annunci' : 'Prezzo non disponibile';
     text.append(name, price, listings); card.append(iconOf(key), text);
+    return card;
+  }));
+}
+
+function renderRecommendations() {
+  const list = $('recommendationList');
+  if (!list || !state.graph) return;
+  if (!state.prices.size) {
+    const message = document.createElement('p'); message.className = 'recommendationEmpty'; message.textContent = 'Le occasioni appariranno dopo il caricamento dei prezzi.';
+    list.replaceChildren(message);
+    return;
+  }
+  const faction = serverFaction() === 'Asmodian' ? 'dark' : 'light';
+  const model = createCostModel(state.graph, unitPrice, faction, key => localStorage.getItem(overrideKey(key)) === '0', {
+    optimizeMaterials: true,
+    successRateFor: id => state.graph.recipes[id]?.successChance != null ? MAX_CRAFT_SUCCESS : undefined,
+    comboSuccessRateFor: id => state.graph.recipes[id]?.comboSuccessChance != null ? MAX_COMBO_SUCCESS : undefined,
+  });
+  const byResult = new Map();
+  for (const [id, recipe] of recipes()) {
+    const outputInfo = state.graph.items?.[String(recipe.out)];
+    if (recipe.qr !== faction || !['weapon', 'armor'].includes(outputInfo?.mc) || recipe.bound) continue;
+    const targetKey = String(recipe.combo || recipe.out);
+    const market = state.prices.get(targetKey);
+    if (market?.price == null || !Number(market.listings)) continue;
+    const attempt = model.ownAttempt(recipe);
+    if (attempt.cost == null || attempt.missing.length) continue;
+    const craftSuccess = recipe.successChance != null && !recipe.safe ? MAX_CRAFT_SUCCESS : 1;
+    const comboSuccess = recipe.comboSuccessChance != null && !recipe.safe ? MAX_COMBO_SUCCESS : 1;
+    const resultChance = recipe.combo ? Number(recipe.cp || 0) / 100 * craftSuccess * comboSuccess : craftSuccess;
+    const resultYield = recipe.combo ? 1 : Number(recipe.outq) || 1;
+    if (!(resultChance > 0)) continue;
+    const cost = attempt.cost / (resultChance * resultYield);
+    const netMarket = netSale(market.price);
+    const profit = netMarket - cost;
+    if (!(profit > 0)) continue;
+    const candidate = { id, recipe, targetKey, market, netMarket, cost, profit, margin: profit / cost * 100 };
+    const previous = byResult.get(targetKey);
+    if (!previous || candidate.profit > previous.profit) byResult.set(targetKey, candidate);
+  }
+  const recommendations = [...byResult.values()].sort((a, b) => b.profit - a.profit).slice(0, 6);
+  if (!recommendations.length) {
+    const message = document.createElement('p'); message.className = 'recommendationEmpty'; message.textContent = 'Nessun craft con guadagno calcolabile nei prezzi disponibili.';
+    list.replaceChildren(message);
+    return;
+  }
+  list.replaceChildren(...recommendations.map((entry, index) => {
+    const card = document.createElement('button'); card.type = 'button'; card.className = 'recommendationCard';
+    const rank = document.createElement('span'); rank.className = 'recommendationRank'; rank.textContent = '#' + (index + 1);
+    const head = document.createElement('div'); head.className = 'recommendationHead';
+    const text = document.createElement('div'); text.className = 'recommendationText';
+    const name = document.createElement('strong'); name.className = 'itemGrade' + gradeClass(entry.targetKey); name.textContent = nameOf(entry.targetKey); name.title = name.textContent;
+    const route = document.createElement('small'); route.textContent = (entry.recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' · ' + (categoryLabels[categoryOf(entry.recipe)] || categoryOf(entry.recipe));
+    text.append(name, route); head.append(iconOf(entry.targetKey), text, rank);
+    const gainLabel = document.createElement('span'); gainLabel.className = 'recommendationGainLabel'; gainLabel.textContent = 'Guadagno stimato';
+    const gain = document.createElement('strong'); gain.className = 'recommendationGain'; gain.textContent = '+' + format(entry.profit) + ' Kina';
+    const details = document.createElement('small'); details.className = 'recommendationDetails'; details.textContent = 'Componenti comprati ' + format(entry.cost) + ' → netto dopo tassa 10% ' + format(entry.netMarket) + ' · ' + entry.market.listings + ' annunci';
+    card.append(head, gainLabel, gain, details);
+    card.addEventListener('click', () => {
+      state.mode = entry.recipe.type;
+      state.profession = entry.recipe.p;
+      state.category = categoryOf(entry.recipe);
+      state.selected = entry.id;
+      $('search').value = '';
+      fillModes(); fillProfessions(); fillCategories(); renderResults(); renderDetail();
+      document.querySelector('.layout')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
     return card;
   }));
 }
@@ -183,10 +257,10 @@ function renderResults() {
     button.className = 'result' + (state.selected === id ? ' active' : '');
     const icon = iconOf(recipe.out);
     const text = document.createElement('div');
-    const title = document.createElement('strong');
+    const title = document.createElement('strong'); title.className = 'itemGrade' + gradeClass(recipe.out);
     title.textContent = nameOf(recipe.out);
     const sub = document.createElement('span');
-    sub.textContent = (categoryLabels[categoryOf(recipe)] || 'Materiali') + ' · ' + masteryLabel(recipe.ml) + (recipe.safe ? ' · Sicuro 100% (vincolato)' : recipe.successChance != null ? ' · Con combo e rischio' : '');
+    sub.textContent = (categoryLabels[categoryOf(recipe)] || 'Materiali') + ' · ' + masteryLabel(recipe.ml) + (recipe.safe ? ' · Sicuro · livello 63 vincolato' : recipe.successChance != null ? ' · Combo · risultato livello 70' : '');
     text.append(title, sub);
     button.append(icon, text);
     button.addEventListener('click', () => { state.selected = id; renderResults(); renderDetail(); });
@@ -257,7 +331,7 @@ function addMissingPriceInputs(parent, keys, title) {
     input.addEventListener('change', () => {
       if (input.value === '') localStorage.removeItem(overrideKey(key));
       else if (Number.isFinite(Number(input.value)) && Number(input.value) >= 0) localStorage.setItem(overrideKey(key), input.value);
-      renderDetail();
+      renderRecommendations(); renderDetail();
     });
     row.append(label, input); group.append(row);
   }
@@ -283,10 +357,10 @@ function renderDetail() {
   const expectedOutput = recipe.combo ? expectedComboResults : craftCount * (Number(recipe.outq) || 1);
   pane.replaceChildren();
   const titleRow = document.createElement('div'); titleRow.className = 'titleRow';
-  const title = document.createElement('h2'); title.textContent = nameOf(recipe.out);
+  const title = document.createElement('h2'); title.className = 'itemGrade' + gradeClass(recipe.out); title.textContent = nameOf(recipe.out);
   titleRow.append(iconOf(recipe.out, 'large'), title);
   const meta = document.createElement('div'); meta.className = 'detailMeta muted';
-  meta.textContent = (recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' › ' + (professionLabels[recipe.p] || recipe.p || 'Crafting') + ' › ' + (categoryLabels[categoryOf(recipe)] || categoryOf(recipe)) + ' · ' + masteryLabel(recipe.ml) + ' · ' + (recipe.outq || 1) + ' per tentativo' + (recipe.safe ? ' · craft sicuro' : recipe.successChance != null ? ' · craft con combo e rischio' : '');
+  meta.textContent = (recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' › ' + (professionLabels[recipe.p] || recipe.p || 'Crafting') + ' › ' + (categoryLabels[categoryOf(recipe)] || categoryOf(recipe)) + ' · ' + masteryLabel(recipe.ml) + ' · ' + (recipe.outq || 1) + ' per tentativo' + (recipe.safe ? ' · risultato sicuro livello 63' : recipe.successChance != null ? ' · combo livello 70' : '');
   const control = document.createElement('div'); control.className = 'controls';
   const quantityWrap = document.createElement('div');
   const quantityLabel = document.createElement('label'); quantityLabel.htmlFor = 'craftQuantity'; quantityLabel.textContent = 'Quantità da craftare';
@@ -294,18 +368,6 @@ function renderDetail() {
   quantity.addEventListener('change', renderDetail);
   quantityWrap.append(quantityLabel, quantity);
   control.append(quantityWrap);
-  const variants = Object.entries(state.graph.recipes).filter(([, other]) => other.type === recipe.type && other.p === recipe.p && other.qr === recipe.qr && String(other.out) === String(recipe.out) && (other.safe || other.successChance != null));
-  if (variants.length > 1) {
-    const routeWrap = document.createElement('div'); routeWrap.className = 'craftRoute';
-    const routeLabel = document.createElement('label'); routeLabel.htmlFor = 'craftRoute'; routeLabel.textContent = 'Ricetta';
-    const route = document.createElement('select'); route.id = 'craftRoute';
-    for (const [id, optionRecipe] of variants) {
-      const option = document.createElement('option'); option.value = id; option.textContent = optionRecipe.safe ? 'Sicuro · arma base vincolata' : 'Con combo · può fallire'; route.append(option);
-    }
-    route.value = state.selected;
-    route.addEventListener('change', () => { state.selected = route.value; renderResults(); renderDetail(); });
-    routeWrap.append(routeLabel, route); control.append(routeWrap);
-  }
   const modeWrap = document.createElement('fieldset'); modeWrap.className = 'materialMode';
   const modeLabel = document.createElement('legend'); modeLabel.textContent = 'Materiali di partenza';
   const sourceChoices = document.createElement('div'); sourceChoices.className = 'sourceChoices';
@@ -344,18 +406,50 @@ function renderDetail() {
   }
   const targetItem = String(recipe.combo || recipe.out);
   const output = state.prices.get(targetItem);
-  const sale = recipe.bound || output?.price == null ? null : Number(output.price) * expectedOutput;
+  const baseOutput = state.prices.get(String(recipe.out));
+  const isLevel70Combo = recipe.combo && recipe.successChance != null && !recipe.safe;
+  const resultLabel = isLevel70Combo ? 'combo Lv. 70' : recipe.combo ? 'combo' : 'oggetto';
+  const resultsPerCraft = recipe.combo ? comboRate * craftSuccessRate * comboSuccessRate : craftSuccessRate * (Number(recipe.outq) || 1);
+  const marketUnitCost = marketAttempt.cost == null || !(resultsPerCraft > 0) ? null : marketAttempt.cost / resultsPerCraft;
+  const ownUnitCost = ownAttempt.cost == null || !(resultsPerCraft > 0) ? null : ownAttempt.cost / resultsPerCraft;
+  const marketUnitPrice = recipe.bound || output?.price == null ? null : Number(output.price);
+  const marketUnitNet = netSale(marketUnitPrice);
+  const unitProfit = ownUnitCost == null || marketUnitNet == null ? null : marketUnitNet - ownUnitCost;
+  const shownMarketCost = isLevel70Combo ? marketAttempt.cost : marketUnitCost;
+  const shownOwnCost = isLevel70Combo ? ownAttempt.cost : ownUnitCost;
+  const level63Price = baseOutput?.price == null ? null : Number(baseOutput.price);
+  const level63Net = netSale(level63Price);
+  const level70Net = netSale(marketUnitPrice);
+  const level63Profit = ownAttempt.cost == null || level63Net == null ? null : level63Net - ownAttempt.cost;
+  const level70Profit = ownAttempt.cost == null || level70Net == null ? null : level70Net - ownAttempt.cost;
   const missingBuyNames = marketAttempt.missing.map(nameOf);
   const missingBuyNote = missingBuyNames.length === 1
     ? 'Manca il prezzo di ' + missingBuyNames[0] + '; inseriscilo nella tabella sotto'
     : missingBuyNames.length + ' componenti senza prezzo: ' + missingBuyNames.join(', ');
   const numbers = document.createElement('div'); numbers.className = 'numbers';
-  numbers.append(
-    box('Comprando i componenti', marketAttempt.cost == null ? 'Prezzo mancante' : format(marketAttempt.cost * craftCount) + ' Kina', marketAttempt.missing.length ? missingBuyNote : 'Materiali per ' + craftCount + ' craft', marketAttempt.cost == null ? 'warn' : ''),
-    box('Craftato', ownAttempt.cost == null ? 'Incompleto' : format(ownAttempt.cost * craftCount) + ' Kina', ownAttempt.missing.length ? ownAttempt.missing.length + ' prezzi mancanti' : fallbackItems.size ? fallbackItems.size + ' pezzi comprati perché la loro catena non è valutabile' : state.materialMode === 'optimize' ? 'Materiali al percorso meno caro, pezzi precedenti craftati' : 'Materiali comprati al market', ownAttempt.cost == null ? 'warn' : 'accent'),
-    box(recipe.combo ? 'Combo al 25% attese' : 'Oggetti attesi', recipe.combo ? formatAttempts(expectedComboActivations) : formatAttempts(expectedOutput), recipe.combo ? (recipe.successChance != null && !recipe.safe ? formatAttempts(expectedComboResults) + ' oggetti combo riusciti stimati considerando i fallimenti' : craftCount + ' craft × ' + formatPercent(comboRate * 100) + '% · valore medio') : 'Da ' + craftCount + ' craft'),
-    box(recipe.combo ? 'Valore delle combo riuscite' : 'Valore atteso sul mercato', sale == null ? '—' : format(sale) + ' Kina', recipe.bound ? 'Risultato vincolato: non vendibile' : output ? (output.listings || 0) + ' annunci · ' + formatAttempts(expectedOutput) + ' pezzi riusciti attesi' : 'Nessun annuncio')
-  );
+  const summaryCards = [
+    box(isLevel70Combo ? 'Costo comprando / 1 craft' : 'Costo comprando / 1 ' + resultLabel, shownMarketCost == null ? 'Prezzo mancante' : format(shownMarketCost) + ' Kina', marketAttempt.missing.length ? missingBuyNote : 'Totale materiali per ' + craftCount + ' craft: ' + format(marketAttempt.cost * craftCount) + ' Kina', shownMarketCost == null ? 'warn' : ''),
+    box(isLevel70Combo ? 'Costo craftato / 1 craft' : 'Costo craftato / 1 ' + resultLabel, shownOwnCost == null ? 'Incompleto' : format(shownOwnCost) + ' Kina', ownAttempt.missing.length ? ownAttempt.missing.length + ' prezzi mancanti' : 'Totale per ' + craftCount + ' craft: ' + format(ownAttempt.cost * craftCount) + ' Kina' + (fallbackItems.size ? ' · alcuni pezzi comprati' : ''), shownOwnCost == null ? 'warn' : 'accent'),
+  ];
+  summaryCards.push(box(recipe.combo ? 'Combo al 25% attese' : 'Oggetti attesi', recipe.combo ? formatAttempts(expectedComboActivations) : formatAttempts(expectedOutput), recipe.combo ? (recipe.successChance != null && !recipe.safe ? formatAttempts(expectedComboResults) + ' oggetti combo riusciti stimati considerando i fallimenti' : craftCount + ' craft × ' + formatPercent(comboRate * 100) + '% · valore medio') : 'Da ' + craftCount + ' craft', isLevel70Combo ? 'wide' : ''));
+  if (isLevel70Combo) {
+    summaryCards.push(
+      box('Prezzo mercato risultato normale Lv. 63', level63Price == null ? '—' : format(level63Price) + ' Kina', baseOutput ? (baseOutput.listings || 0) + ' annunci · prezzo minimo' : 'Nessun annuncio'),
+      box('Prezzo mercato combo Lv. 70', marketUnitPrice == null ? '—' : format(marketUnitPrice) + ' Kina', output ? (output.listings || 0) + ' annunci · prezzo minimo' : 'Nessun annuncio')
+    );
+    summaryCards.push(
+      box('Ricavo netto Lv. 63', level63Net == null ? '—' : format(level63Net) + ' Kina', 'Prezzo mercato meno tassa di vendita 10%'),
+      box('Ricavo netto combo Lv. 70', level70Net == null ? '—' : format(level70Net) + ' Kina', 'Prezzo mercato meno tassa di vendita 10%')
+    );
+    summaryCards.push(
+      box('Guadagno / perdita netta se esce Lv. 63', level63Profit == null ? '—' : (level63Profit >= 0 ? '+' : '−') + format(Math.abs(level63Profit)) + ' Kina', level63Profit == null ? 'Servono costo craftato e prezzo Lv. 63' : 'Ricavo netto Lv. 63 − costo di 1 craft · inserzione esclusa', 'outcomeProfit ' + (level63Profit == null ? '' : level63Profit >= 0 ? 'gain' : 'loss')),
+      box('Guadagno / perdita netta se esce combo Lv. 70', level70Profit == null ? '—' : (level70Profit >= 0 ? '+' : '−') + format(Math.abs(level70Profit)) + ' Kina', level70Profit == null ? 'Servono costo craftato e prezzo Lv. 70' : 'Ricavo netto Lv. 70 − costo di 1 craft · inserzione esclusa', 'outcomeProfit ' + (level70Profit == null ? '' : level70Profit >= 0 ? 'gain' : 'loss'))
+    );
+  } else {
+    summaryCards.push(box('Prezzo mercato / 1 ' + resultLabel, marketUnitPrice == null ? '—' : format(marketUnitPrice) + ' Kina', recipe.bound ? 'Risultato vincolato: non vendibile' : output ? (output.listings || 0) + ' annunci · netto tassa 10%: ' + format(marketUnitNet) + ' Kina' : 'Nessun annuncio'));
+    summaryCards.push(box('Guadagno / perdita netta per 1 ' + resultLabel, unitProfit == null ? '—' : (unitProfit >= 0 ? '+' : '−') + format(Math.abs(unitProfit)) + ' Kina', unitProfit == null ? 'Servono costo craftato e prezzo di mercato' : 'Ricavo netto − costo medio craftato · inserzione esclusa', 'profitResult ' + (unitProfit == null ? '' : unitProfit >= 0 ? 'gain' : 'loss')));
+  }
+  numbers.append(...summaryCards);
   pane.append(numbers);
   const heading = document.createElement('h3'); heading.textContent = recipe.transferFrom ? 'Equipaggiamento e materiali necessari' : 'Materiali necessari'; pane.append(heading);
   const table = document.createElement('table');
@@ -368,7 +462,7 @@ function renderDetail() {
     const tr = document.createElement('tr');
     const name = document.createElement('td'); name.className = 'material';
     const nameWrap = document.createElement('div'); nameWrap.className = 'materialName';
-    const nameText = document.createElement('span'); nameText.textContent = nameOf(row.key) + (row.transfer ? ' · da trasferire' : '');
+    const nameText = document.createElement('span'); nameText.className = 'itemGrade' + gradeClass(row.key); nameText.textContent = nameOf(row.key) + (row.transfer ? ' · da trasferire' : '');
     nameWrap.append(iconOf(row.key), nameText); name.append(nameWrap);
     const count = document.createElement('td'); count.textContent = formatAttempts(row.count);
     const priceCell = document.createElement('td');
@@ -380,7 +474,7 @@ function renderDetail() {
     input.addEventListener('change', () => {
       if (input.value === '') localStorage.removeItem(overrideKey(row.key));
       else if (Number.isFinite(Number(input.value)) && Number(input.value) >= 0) localStorage.setItem(overrideKey(row.key), input.value);
-      renderDetail();
+      renderRecommendations(); renderDetail();
     });
     const source = document.createElement('div'); source.className = 'sourceTag';
     source.textContent = manualValue != null && manualValue !== '' ? 'Prezzo manuale' : row.market?.price == null ? (GLOBAL_VENDOR_PRICES[row.key] != null ? 'Negoziante Global · ' + format(GLOBAL_VENDOR_PRICES[row.key]) + ' Kina' : row.transfer ? 'Nessun annuncio: se lo possiedi, inserisci 0' : 'Nessun annuncio: inserisci il prezzo') : 'Mercato ' + format(row.market.price) + ' Kina · ' + (row.market.listings || 0) + ' annunci';
@@ -416,11 +510,11 @@ async function loadPrices(preserveOld = false) {
     state.fetchedAt = result.retrieved_at;
     const time = new Date(state.fetchedAt).toLocaleString('it-IT');
     status(state.prices.size + ' oggetti dal mercato · consultazione ' + time + ' · prezzi minimi degli annunci', 'good');
-    renderQuickPrices(); renderResults(); renderDetail();
+    renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail();
   } catch (error) {
     if (!preserveOld) state.prices = new Map();
     status((preserveOld ? 'Aggiornamento non riuscito; restano i prezzi precedenti: ' : 'Prezzi non disponibili: ') + error.message + '. Puoi inserire prezzi manuali nelle ricette.', 'error');
-    renderQuickPrices(); renderResults(); renderDetail();
+    renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail();
   } finally { $('reload').disabled = false; }
 }
 
@@ -431,7 +525,7 @@ async function init() {
   const saved = Number(localStorage.getItem('aion2craft:server'));
   if (state.servers.some(server => server.server_id === saved)) state.server = saved;
   state.region = state.servers.find(server => server.server_id === state.server)?.region || 'EU';
-  fillRegions(); fillServers(); fillModes(); fillProfessions(); fillCategories(); renderQuickPrices(); chooseFirst();
+  fillRegions(); fillServers(); fillModes(); fillProfessions(); fillCategories(); renderQuickPrices(); renderRecommendations(); chooseFirst();
   await loadPrices();
 }
 

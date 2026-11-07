@@ -27,12 +27,13 @@ $html = @'
     select,input{width:100%;background:#0f1726;color:#eef2fc;border:1px solid #35445a;border-radius:11px;padding:11px 12px;outline:none}
     select:focus,input:focus{border-color:#80cfff;box-shadow:0 0 0 3px #80cfff22}button.primary{border:0;background:#8bcfff;color:#0c1a2c;font-weight:800;border-radius:11px;padding:12px 18px;white-space:nowrap}button.primary:hover{background:#b4e0ff}
     .status{min-height:24px;color:#aebbd0;font-size:13px;margin-bottom:18px}.status.error{color:#ffb1ab}.status.good{color:#9de0c1}
-    .quickPrices{margin:0 0 20px}.quickPrices h2{font-size:15px;margin:0 0 10px;color:#dce7f7}.quickPriceList{display:flex;gap:9px;overflow-x:auto;padding:1px 1px 9px;scrollbar-width:thin}.quickPrice{display:grid;grid-template-columns:auto minmax(105px,1fr);align-items:center;gap:9px;flex:0 0 auto;min-width:180px;padding:10px 12px;border:1px solid #2c4058;border-radius:13px;background:#121d2d}.quickPrice .itemIcon{width:32px;height:32px}.quickPriceName{display:block;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#b8c7da;font-size:11px}.quickPrice strong{display:block;margin-top:2px;font-size:15px;color:#f4f7ff}.quickPrice small{display:block;margin-top:2px;color:#8094ac;font-size:10px}
+    .quickPrices{margin:0 0 20px}.quickPrices h2{font-size:15px;margin:0 0 10px;color:#dce7f7}.quickPriceList{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:9px}.quickPrice{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:9px;min-width:0;padding:10px 12px;border:1px solid #2c4058;border-radius:13px;background:#121d2d}.quickPrice .itemIcon{width:32px;height:32px}.quickPriceName{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#b8c7da;font-size:11px}.quickPrice strong{display:block;margin-top:2px;font-size:15px;color:#f4f7ff}.quickPrice small{display:block;margin-top:2px;color:#8094ac;font-size:10px}
+    .recommendations{margin:0 0 22px}.recommendations h2{font-size:17px;margin:0 0 4px}.recommendations>p{color:#8fa2ba;font-size:12px;margin:0 0 11px}.recommendationList{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:10px}.recommendationCard{position:relative;min-width:0;padding:13px;text-align:left;color:#eef2fc;border:1px solid #31506a;border-radius:15px;background:linear-gradient(145deg,#15263a,#101a29);box-shadow:inset 0 1px #ffffff08}.recommendationCard:hover{border-color:#73c8f4;background:linear-gradient(145deg,#1a3048,#122238);transform:translateY(-1px)}.recommendationHead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:9px}.recommendationHead .itemIcon{width:38px;height:38px}.recommendationText{min-width:0}.recommendationText strong,.recommendationText small{display:block}.recommendationText strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.recommendationText small{margin-top:3px;color:#8fa2ba;font-size:10px}.recommendationRank{align-self:start;border:1px solid #42627e;border-radius:999px;padding:3px 6px;color:#9bcdea;background:#102235;font-size:10px}.recommendationGainLabel{display:block;margin-top:12px;color:#8fa2ba;font-size:10px;text-transform:uppercase;letter-spacing:.05em}.recommendationGain{display:block;margin-top:2px;color:#7ce6a9;font-size:20px}.recommendationDetails{display:block;margin-top:4px;color:#9babc0;font-size:10px;line-height:1.35}.recommendationEmpty{grid-column:1/-1;margin:0;padding:14px;border:1px dashed #34465d;border-radius:13px;color:#8fa2ba;background:#111b2a}
     .layout{display:grid;grid-template-columns:minmax(290px,390px) minmax(0,1fr);gap:20px;align-items:start}.panel{background:#161f30;border:1px solid #2a3950;border-radius:20px;overflow:hidden}.panelHead{padding:20px 20px 14px;border-bottom:1px solid #2a3950}.panelHead h2{font-size:19px;margin:0 0 12px}.panelHead .search{margin-bottom:12px}.panelHead .filters{display:flex;gap:7px;flex-wrap:wrap}.chip{border:1px solid #3a4b63;background:#1a2739;color:#cbd6e7;padding:7px 10px;border-radius:999px;font-size:12px}.chip.active{background:#83cfff;color:#0b192a;border-color:#83cfff;font-weight:800}
     .menu{display:flex;gap:8px;overflow-x:auto;padding:4px 0 15px;scrollbar-width:thin}.menu button{border:1px solid #34465d;background:#172437;color:#c4d3e7;border-radius:12px;padding:10px 13px;white-space:nowrap;text-align:left}.menu button.active{background:#254565;border-color:#79c7f8;color:#fff}.menu button strong{display:block;font-size:13px}.menu button small{display:block;color:#9fb2c9;font-size:11px;margin-top:3px}.categoryMenu{display:flex;gap:7px;overflow-x:auto;padding:2px 0 5px;scrollbar-width:thin}.categoryMenu button{border:1px solid #3a4b63;background:#1a2739;color:#cbd6e7;padding:7px 10px;border-radius:999px;font-size:12px;white-space:nowrap}.categoryMenu button.active{background:#83cfff;color:#0b192a;border-color:#83cfff;font-weight:800}
-    .results{overflow:visible}.result{display:flex;align-items:center;gap:12px;width:100%;background:transparent;color:inherit;text-align:left;border:0;border-bottom:1px solid #26364a;padding:12px 20px}.result:hover,.result.active{background:#223349}.result strong{display:block;font-size:14px;line-height:1.4}.result span{display:block;color:#9eafc6;font-size:12px;margin-top:4px}.empty{color:#9eafc6;padding:22px}.itemIcon{width:36px;height:36px;flex:none;object-fit:contain;border:1px solid #3b4f68;border-radius:9px;background:radial-gradient(circle at 50% 38%,#2b3b50,#101b2b 72%);padding:3px;box-shadow:inset 0 0 10px #0006}.itemIcon.grade-11{border-color:#63778e;background:radial-gradient(circle at 50% 38%,#506579,#172333 72%)}.itemIcon.grade-21{border-color:#2fa6e8;background:radial-gradient(circle at 50% 38%,#17658f,#10283d 72%);box-shadow:inset 0 0 10px #07182799,0 0 8px #2fa6e833}.itemIcon.grade-31{border-color:#a66df0;background:radial-gradient(circle at 50% 38%,#623d91,#241836 72%);box-shadow:inset 0 0 10px #11091e99,0 0 8px #a66df033}.itemIcon.grade-41{border-color:#e2ac3d;background:radial-gradient(circle at 50% 38%,#876521,#33270f 72%);box-shadow:inset 0 0 10px #1e140499,0 0 8px #e2ac3d3d}.itemIcon.grade-71{border-color:#ed5c68;background:radial-gradient(circle at 50% 38%,#8a3038,#351419 72%);box-shadow:inset 0 0 10px #21080b99,0 0 8px #ed5c6840}.itemIcon.large{width:46px;height:46px}.titleRow{display:flex;align-items:center;gap:12px}.materialName{display:flex;align-items:center;gap:9px}.materialName .itemIcon{width:29px;height:29px}.modeMenu{display:flex;gap:10px;margin:0 0 16px}.modeMenu button{border:1px solid #39516b;background:#18283e;color:#c6d7eb;border-radius:12px;padding:10px 16px;font-weight:750}.modeMenu button.active{background:#88cfff;color:#0b192a;border-color:#88cfff}
-    .detail{padding:24px}.detail h2{font-size:25px;letter-spacing:-.025em;margin:0 0 9px}.muted{color:#9eafc6}.detailMeta{font-size:13px;margin-bottom:22px}.numbers{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin:20px 0}.number{background:#101b2a;border:1px solid #2c4058;border-radius:14px;padding:15px}.number span{display:block;color:#9eafc6;font-size:12px}.number strong{display:block;font-size:23px;margin-top:6px}.number small{display:block;color:#9eafc6;margin-top:5px}.number.accent strong{color:#9bdcff}.number.warn strong{color:#ffc8a6}.tableScroll{overflow-x:auto}.tableScroll table{min-width:720px}.craftBreakdown{margin-top:7px}.craftBreakdown summary{cursor:pointer;color:#9bdcff;font-size:12px}.craftBreakdown ul{padding-left:17px;margin:7px 0;color:#b6c6da;font-size:12px;line-height:1.5}.craftBreakdown li{margin:3px 0}.fallbackNote{color:#ffc8a6;font-size:11px;margin-top:5px}.missingPrices{margin-top:20px;padding:15px;border:1px solid #6c4d45;border-radius:13px;background:#2b252a}.missingPrices h3{margin:0 0 7px}.missingPriceRow{display:flex;align-items:center;gap:10px;margin-top:9px}.missingPriceRow label{margin:0;flex:1;text-transform:none;letter-spacing:0}.missingPriceRow input{width:130px}
-    .controls{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:15px}.controls>div{width:150px}.controls>.materialMode{width:270px;margin:0;padding:0;border:0}.controls>.craftRoute{width:235px}.controls .note{color:#9eafc6;font-size:12px;max-width:520px}.materialMode legend{color:#aebbd0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px}.sourceChoices{display:grid;gap:7px}.sourceChoice{display:flex;align-items:center;gap:10px;margin:0;padding:10px 12px;border:1px solid #35445a;border-radius:11px;background:#0f1726;color:#eef2fc;text-transform:none;letter-spacing:0;cursor:pointer}.sourceChoice:has(input:checked){border-color:#80cfff;background:#172b42;box-shadow:0 0 0 2px #80cfff18}.sourceChoice input{width:17px;height:17px;margin:0;accent-color:#80cfff;box-shadow:none}.sourceChoice span{min-width:0}.sourceChoice strong,.sourceChoice small{display:block}.sourceChoice strong{font-size:13px}.sourceChoice small{margin-top:2px;color:#9eafc6;font-size:11px;font-weight:400;line-height:1.25}
+    .results{overflow:visible}.result{display:flex;align-items:center;gap:12px;width:100%;background:transparent;color:inherit;text-align:left;border:0;border-bottom:1px solid #26364a;padding:12px 20px}.result:hover,.result.active{background:#223349}.result strong{display:block;font-size:14px;line-height:1.4}.result span{display:block;color:#9eafc6;font-size:12px;margin-top:4px}.empty{color:#9eafc6;padding:22px}.itemGrade.grade-11{color:#d5d8db}.itemGrade.grade-21{color:#48c768}.itemGrade.grade-31{color:#45a8ed}.itemGrade.grade-41{color:#dfb632}.itemGrade.grade-71{color:#f06b72}.itemIcon{width:36px;height:36px;flex:none;object-fit:contain;border:1px solid #48515b;border-radius:9px;background:radial-gradient(circle at 50% 38%,#34383c,#141719 72%);padding:3px;box-shadow:inset 0 0 10px #0009}.itemIcon.grade-11{border-color:#666d73;background:radial-gradient(circle at 50% 38%,#3c4145,#171a1c 72%)}.itemIcon.grade-21{border-color:#257d39;background:radial-gradient(circle at 50% 38%,#153f20,#09170d 72%);box-shadow:inset 0 0 10px #020a0499,0 0 7px #2aa84a2b}.itemIcon.grade-31{border-color:#287aa9;background:radial-gradient(circle at 50% 38%,#17496a,#091c2b 72%);box-shadow:inset 0 0 10px #030d1599,0 0 7px #2e9edc30}.itemIcon.grade-41{border-color:#9b7a16;background:radial-gradient(circle at 50% 38%,#594714,#211b08 72%);box-shadow:inset 0 0 10px #100c0299,0 0 7px #d3a91f30}.itemIcon.grade-71{border-color:#a63e45;background:radial-gradient(circle at 50% 38%,#60242a,#240c0f 72%);box-shadow:inset 0 0 10px #16040699,0 0 7px #dd4c5630}.itemIcon.large{width:46px;height:46px}.titleRow{display:flex;align-items:center;gap:12px}.materialName{display:flex;align-items:center;gap:9px}.materialName .itemIcon{width:29px;height:29px}.modeMenu{display:flex;gap:10px;margin:0 0 16px}.modeMenu button{border:1px solid #39516b;background:#18283e;color:#c6d7eb;border-radius:12px;padding:10px 16px;font-weight:750}.modeMenu button.active{background:#88cfff;color:#0b192a;border-color:#88cfff}
+    .detail{padding:24px}.detail h2{font-size:25px;letter-spacing:-.025em;margin:0 0 9px}.muted{color:#9eafc6}.detailMeta{font-size:13px;margin-bottom:22px}.numbers{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin:20px 0}.number{background:#101b2a;border:1px solid #2c4058;border-radius:14px;padding:15px}.number span{display:block;color:#9eafc6;font-size:12px}.number strong{display:block;font-size:23px;margin-top:6px}.number small{display:block;color:#9eafc6;margin-top:5px}.number.accent strong{color:#9bdcff}.number.warn strong{color:#ffc8a6}.number.wide,.number.profitResult{grid-column:1/-1}.number.profitResult.gain,.number.outcomeProfit.gain{border-color:#2f7050;background:#10271f}.number.profitResult.gain strong,.number.outcomeProfit.gain strong{color:#7ce6a9}.number.profitResult.loss,.number.outcomeProfit.loss{border-color:#764b4b;background:#291b20}.number.profitResult.loss strong,.number.outcomeProfit.loss strong{color:#ff9e9e}.tableScroll{overflow-x:auto}.tableScroll table{min-width:720px}.craftBreakdown{margin-top:7px}.craftBreakdown summary{cursor:pointer;color:#9bdcff;font-size:12px}.craftBreakdown ul{padding-left:17px;margin:7px 0;color:#b6c6da;font-size:12px;line-height:1.5}.craftBreakdown li{margin:3px 0}.fallbackNote{color:#ffc8a6;font-size:11px;margin-top:5px}.missingPrices{margin-top:20px;padding:15px;border:1px solid #6c4d45;border-radius:13px;background:#2b252a}.missingPrices h3{margin:0 0 7px}.missingPriceRow{display:flex;align-items:center;gap:10px;margin-top:9px}.missingPriceRow label{margin:0;flex:1;text-transform:none;letter-spacing:0}.missingPriceRow input{width:130px}
+    .controls{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:15px}.controls>div{width:150px}.controls>.materialMode{width:270px;margin:0;padding:0;border:0}.controls .note{color:#9eafc6;font-size:12px;max-width:520px}.materialMode legend{color:#aebbd0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px}.sourceChoices{display:grid;gap:7px}.sourceChoice{display:flex;align-items:center;gap:10px;margin:0;padding:10px 12px;border:1px solid #35445a;border-radius:11px;background:#0f1726;color:#eef2fc;text-transform:none;letter-spacing:0;cursor:pointer}.sourceChoice:has(input:checked){border-color:#80cfff;background:#172b42;box-shadow:0 0 0 2px #80cfff18}.sourceChoice input{width:17px;height:17px;margin:0;accent-color:#80cfff;box-shadow:none}.sourceChoice span{min-width:0}.sourceChoice strong,.sourceChoice small{display:block}.sourceChoice strong{font-size:13px}.sourceChoice small{margin-top:2px;color:#9eafc6;font-size:11px;font-weight:400;line-height:1.25}
     table{border-collapse:collapse;width:100%}th,td{padding:11px 8px;border-bottom:1px solid #2b3a4e;text-align:left;font-size:13px}th{color:#9eafc6;font-size:11px;text-transform:uppercase;letter-spacing:.06em}td:last-child,th:last-child{text-align:right}.material{font-weight:650}.priceInput{width:125px;padding:7px 9px;text-align:right}.sourceTag{font-size:11px;color:#9eafc6}.missing{color:#ffc8a6}.foot{font-size:12px;color:#8497b0;margin-top:25px}.foot a{color:#9bdcff}
     @media(max-width:850px){.toolbar{grid-template-columns:1fr 1fr}.layout{grid-template-columns:1fr}.numbers{grid-template-columns:1fr 1fr}.shell{padding:16px}}@media(max-width:520px){.toolbar{grid-template-columns:1fr}.top{align-items:flex-start}.badge{display:none}.numbers{grid-template-columns:1fr}.detail{padding:18px}.priceInput{width:90px}th,td{padding:9px 4px}}
   </style>
@@ -49,6 +50,7 @@ $html = @'
       <button class="primary" id="reload" type="button">↻ Aggiorna prezzi</button>
     </section>
     <div id="status" class="status" role="status" aria-live="polite">Caricamento ricette e server…</div>
+    <section class="recommendations" aria-labelledby="recommendationsTitle"><h2 id="recommendationsTitle">Craft consigliati</h2><p>Armi e armature ordinate per guadagno netto sul server, dopo la tassa di vendita del 10%. Tariffa di inserzione esclusa.</p><div id="recommendationList" class="recommendationList"></div></section>
     <section class="quickPrices" aria-labelledby="quickPricesTitle"><h2 id="quickPricesTitle">Prezzi rapidi del server</h2><div id="quickPriceList" class="quickPriceList"></div></section>
     <nav id="modes" class="modeMenu" aria-label="Tipo di crafting"></nav>
     <nav id="professions" class="menu" aria-label="Professioni di crafting"></nav>
@@ -73,6 +75,8 @@ const formatAttempts = value => Number(value).toLocaleString('it-IT', { maximumF
 const formatPercent = value => Number(value).toLocaleString('it-IT', { maximumFractionDigits: 2 });
 const MAX_CRAFT_SUCCESS = 0.9464;
 const MAX_COMBO_SUCCESS = 0.23 / (MAX_CRAFT_SUCCESS * 0.25);
+const MARKET_TAX_RATE = 0.10;
+const netSale = value => value == null ? null : Number(value) * (1 - MARKET_TAX_RATE);
 const QUICK_PRICE_ITEMS = [
   '610511013', '610511015', '610511014',
   '610610013', '610610014', '610610015', '610610016',
@@ -101,12 +105,17 @@ function nameOf(key) {
   return item?.n || state.prices.get(String(key))?.name || String(key);
 }
 
+function gradeClass(key) {
+  const grade = state.graph?.items?.[String(key)]?.g;
+  return grade ? ' grade-' + grade : '';
+}
+
 function iconOf(key, extraClass = '') {
   const item = state.graph?.items?.[String(key)];
   const url = item?.icon;
   if (!url) return document.createElement('span');
   const image = document.createElement('img');
-  image.className = 'itemIcon' + (item?.g ? ' grade-' + item.g : '') + (extraClass ? ' ' + extraClass : '');
+  image.className = 'itemIcon' + gradeClass(key) + (extraClass ? ' ' + extraClass : '');
   image.src = url;
   image.alt = '';
   image.loading = 'lazy';
@@ -121,10 +130,77 @@ function renderQuickPrices() {
     const market = state.prices.get(key);
     const card = document.createElement('article'); card.className = 'quickPrice';
     const text = document.createElement('div');
-    const name = document.createElement('span'); name.className = 'quickPriceName'; name.textContent = nameOf(key); name.title = name.textContent;
+    const name = document.createElement('span'); name.className = 'quickPriceName itemGrade' + gradeClass(key); name.textContent = nameOf(key); name.title = name.textContent;
     const price = document.createElement('strong'); price.textContent = market?.price == null ? '—' : format(Number(market.price)) + ' Kina';
     const listings = document.createElement('small'); listings.textContent = market ? (market.listings || 0) + ' annunci' : 'Prezzo non disponibile';
     text.append(name, price, listings); card.append(iconOf(key), text);
+    return card;
+  }));
+}
+
+function renderRecommendations() {
+  const list = $('recommendationList');
+  if (!list || !state.graph) return;
+  if (!state.prices.size) {
+    const message = document.createElement('p'); message.className = 'recommendationEmpty'; message.textContent = 'Le occasioni appariranno dopo il caricamento dei prezzi.';
+    list.replaceChildren(message);
+    return;
+  }
+  const faction = serverFaction() === 'Asmodian' ? 'dark' : 'light';
+  const model = createCostModel(state.graph, unitPrice, faction, key => localStorage.getItem(overrideKey(key)) === '0', {
+    optimizeMaterials: true,
+    successRateFor: id => state.graph.recipes[id]?.successChance != null ? MAX_CRAFT_SUCCESS : undefined,
+    comboSuccessRateFor: id => state.graph.recipes[id]?.comboSuccessChance != null ? MAX_COMBO_SUCCESS : undefined,
+  });
+  const byResult = new Map();
+  for (const [id, recipe] of recipes()) {
+    const outputInfo = state.graph.items?.[String(recipe.out)];
+    if (recipe.qr !== faction || !['weapon', 'armor'].includes(outputInfo?.mc) || recipe.bound) continue;
+    const targetKey = String(recipe.combo || recipe.out);
+    const market = state.prices.get(targetKey);
+    if (market?.price == null || !Number(market.listings)) continue;
+    const attempt = model.ownAttempt(recipe);
+    if (attempt.cost == null || attempt.missing.length) continue;
+    const craftSuccess = recipe.successChance != null && !recipe.safe ? MAX_CRAFT_SUCCESS : 1;
+    const comboSuccess = recipe.comboSuccessChance != null && !recipe.safe ? MAX_COMBO_SUCCESS : 1;
+    const resultChance = recipe.combo ? Number(recipe.cp || 0) / 100 * craftSuccess * comboSuccess : craftSuccess;
+    const resultYield = recipe.combo ? 1 : Number(recipe.outq) || 1;
+    if (!(resultChance > 0)) continue;
+    const cost = attempt.cost / (resultChance * resultYield);
+    const netMarket = netSale(market.price);
+    const profit = netMarket - cost;
+    if (!(profit > 0)) continue;
+    const candidate = { id, recipe, targetKey, market, netMarket, cost, profit, margin: profit / cost * 100 };
+    const previous = byResult.get(targetKey);
+    if (!previous || candidate.profit > previous.profit) byResult.set(targetKey, candidate);
+  }
+  const recommendations = [...byResult.values()].sort((a, b) => b.profit - a.profit).slice(0, 6);
+  if (!recommendations.length) {
+    const message = document.createElement('p'); message.className = 'recommendationEmpty'; message.textContent = 'Nessun craft con guadagno calcolabile nei prezzi disponibili.';
+    list.replaceChildren(message);
+    return;
+  }
+  list.replaceChildren(...recommendations.map((entry, index) => {
+    const card = document.createElement('button'); card.type = 'button'; card.className = 'recommendationCard';
+    const rank = document.createElement('span'); rank.className = 'recommendationRank'; rank.textContent = '#' + (index + 1);
+    const head = document.createElement('div'); head.className = 'recommendationHead';
+    const text = document.createElement('div'); text.className = 'recommendationText';
+    const name = document.createElement('strong'); name.className = 'itemGrade' + gradeClass(entry.targetKey); name.textContent = nameOf(entry.targetKey); name.title = name.textContent;
+    const route = document.createElement('small'); route.textContent = (entry.recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' · ' + (categoryLabels[categoryOf(entry.recipe)] || categoryOf(entry.recipe));
+    text.append(name, route); head.append(iconOf(entry.targetKey), text, rank);
+    const gainLabel = document.createElement('span'); gainLabel.className = 'recommendationGainLabel'; gainLabel.textContent = 'Guadagno stimato';
+    const gain = document.createElement('strong'); gain.className = 'recommendationGain'; gain.textContent = '+' + format(entry.profit) + ' Kina';
+    const details = document.createElement('small'); details.className = 'recommendationDetails'; details.textContent = 'Componenti comprati ' + format(entry.cost) + ' → netto dopo tassa 10% ' + format(entry.netMarket) + ' · ' + entry.market.listings + ' annunci';
+    card.append(head, gainLabel, gain, details);
+    card.addEventListener('click', () => {
+      state.mode = entry.recipe.type;
+      state.profession = entry.recipe.p;
+      state.category = categoryOf(entry.recipe);
+      state.selected = entry.id;
+      $('search').value = '';
+      fillModes(); fillProfessions(); fillCategories(); renderResults(); renderDetail();
+      document.querySelector('.layout')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
     return card;
   }));
 }
@@ -249,10 +325,10 @@ function renderResults() {
     button.className = 'result' + (state.selected === id ? ' active' : '');
     const icon = iconOf(recipe.out);
     const text = document.createElement('div');
-    const title = document.createElement('strong');
+    const title = document.createElement('strong'); title.className = 'itemGrade' + gradeClass(recipe.out);
     title.textContent = nameOf(recipe.out);
     const sub = document.createElement('span');
-    sub.textContent = (categoryLabels[categoryOf(recipe)] || 'Materiali') + ' · ' + masteryLabel(recipe.ml) + (recipe.safe ? ' · Sicuro 100% (vincolato)' : recipe.successChance != null ? ' · Con combo e rischio' : '');
+    sub.textContent = (categoryLabels[categoryOf(recipe)] || 'Materiali') + ' · ' + masteryLabel(recipe.ml) + (recipe.safe ? ' · Sicuro · livello 63 vincolato' : recipe.successChance != null ? ' · Combo · risultato livello 70' : '');
     text.append(title, sub);
     button.append(icon, text);
     button.addEventListener('click', () => { state.selected = id; renderResults(); renderDetail(); });
@@ -323,7 +399,7 @@ function addMissingPriceInputs(parent, keys, title) {
     input.addEventListener('change', () => {
       if (input.value === '') localStorage.removeItem(overrideKey(key));
       else if (Number.isFinite(Number(input.value)) && Number(input.value) >= 0) localStorage.setItem(overrideKey(key), input.value);
-      renderDetail();
+      renderRecommendations(); renderDetail();
     });
     row.append(label, input); group.append(row);
   }
@@ -349,10 +425,10 @@ function renderDetail() {
   const expectedOutput = recipe.combo ? expectedComboResults : craftCount * (Number(recipe.outq) || 1);
   pane.replaceChildren();
   const titleRow = document.createElement('div'); titleRow.className = 'titleRow';
-  const title = document.createElement('h2'); title.textContent = nameOf(recipe.out);
+  const title = document.createElement('h2'); title.className = 'itemGrade' + gradeClass(recipe.out); title.textContent = nameOf(recipe.out);
   titleRow.append(iconOf(recipe.out, 'large'), title);
   const meta = document.createElement('div'); meta.className = 'detailMeta muted';
-  meta.textContent = (recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' › ' + (professionLabels[recipe.p] || recipe.p || 'Crafting') + ' › ' + (categoryLabels[categoryOf(recipe)] || categoryOf(recipe)) + ' · ' + masteryLabel(recipe.ml) + ' · ' + (recipe.outq || 1) + ' per tentativo' + (recipe.safe ? ' · craft sicuro' : recipe.successChance != null ? ' · craft con combo e rischio' : '');
+  meta.textContent = (recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' › ' + (professionLabels[recipe.p] || recipe.p || 'Crafting') + ' › ' + (categoryLabels[categoryOf(recipe)] || categoryOf(recipe)) + ' · ' + masteryLabel(recipe.ml) + ' · ' + (recipe.outq || 1) + ' per tentativo' + (recipe.safe ? ' · risultato sicuro livello 63' : recipe.successChance != null ? ' · combo livello 70' : '');
   const control = document.createElement('div'); control.className = 'controls';
   const quantityWrap = document.createElement('div');
   const quantityLabel = document.createElement('label'); quantityLabel.htmlFor = 'craftQuantity'; quantityLabel.textContent = 'Quantità da craftare';
@@ -360,18 +436,6 @@ function renderDetail() {
   quantity.addEventListener('change', renderDetail);
   quantityWrap.append(quantityLabel, quantity);
   control.append(quantityWrap);
-  const variants = Object.entries(state.graph.recipes).filter(([, other]) => other.type === recipe.type && other.p === recipe.p && other.qr === recipe.qr && String(other.out) === String(recipe.out) && (other.safe || other.successChance != null));
-  if (variants.length > 1) {
-    const routeWrap = document.createElement('div'); routeWrap.className = 'craftRoute';
-    const routeLabel = document.createElement('label'); routeLabel.htmlFor = 'craftRoute'; routeLabel.textContent = 'Ricetta';
-    const route = document.createElement('select'); route.id = 'craftRoute';
-    for (const [id, optionRecipe] of variants) {
-      const option = document.createElement('option'); option.value = id; option.textContent = optionRecipe.safe ? 'Sicuro · arma base vincolata' : 'Con combo · può fallire'; route.append(option);
-    }
-    route.value = state.selected;
-    route.addEventListener('change', () => { state.selected = route.value; renderResults(); renderDetail(); });
-    routeWrap.append(routeLabel, route); control.append(routeWrap);
-  }
   const modeWrap = document.createElement('fieldset'); modeWrap.className = 'materialMode';
   const modeLabel = document.createElement('legend'); modeLabel.textContent = 'Materiali di partenza';
   const sourceChoices = document.createElement('div'); sourceChoices.className = 'sourceChoices';
@@ -410,18 +474,50 @@ function renderDetail() {
   }
   const targetItem = String(recipe.combo || recipe.out);
   const output = state.prices.get(targetItem);
-  const sale = recipe.bound || output?.price == null ? null : Number(output.price) * expectedOutput;
+  const baseOutput = state.prices.get(String(recipe.out));
+  const isLevel70Combo = recipe.combo && recipe.successChance != null && !recipe.safe;
+  const resultLabel = isLevel70Combo ? 'combo Lv. 70' : recipe.combo ? 'combo' : 'oggetto';
+  const resultsPerCraft = recipe.combo ? comboRate * craftSuccessRate * comboSuccessRate : craftSuccessRate * (Number(recipe.outq) || 1);
+  const marketUnitCost = marketAttempt.cost == null || !(resultsPerCraft > 0) ? null : marketAttempt.cost / resultsPerCraft;
+  const ownUnitCost = ownAttempt.cost == null || !(resultsPerCraft > 0) ? null : ownAttempt.cost / resultsPerCraft;
+  const marketUnitPrice = recipe.bound || output?.price == null ? null : Number(output.price);
+  const marketUnitNet = netSale(marketUnitPrice);
+  const unitProfit = ownUnitCost == null || marketUnitNet == null ? null : marketUnitNet - ownUnitCost;
+  const shownMarketCost = isLevel70Combo ? marketAttempt.cost : marketUnitCost;
+  const shownOwnCost = isLevel70Combo ? ownAttempt.cost : ownUnitCost;
+  const level63Price = baseOutput?.price == null ? null : Number(baseOutput.price);
+  const level63Net = netSale(level63Price);
+  const level70Net = netSale(marketUnitPrice);
+  const level63Profit = ownAttempt.cost == null || level63Net == null ? null : level63Net - ownAttempt.cost;
+  const level70Profit = ownAttempt.cost == null || level70Net == null ? null : level70Net - ownAttempt.cost;
   const missingBuyNames = marketAttempt.missing.map(nameOf);
   const missingBuyNote = missingBuyNames.length === 1
     ? 'Manca il prezzo di ' + missingBuyNames[0] + '; inseriscilo nella tabella sotto'
     : missingBuyNames.length + ' componenti senza prezzo: ' + missingBuyNames.join(', ');
   const numbers = document.createElement('div'); numbers.className = 'numbers';
-  numbers.append(
-    box('Comprando i componenti', marketAttempt.cost == null ? 'Prezzo mancante' : format(marketAttempt.cost * craftCount) + ' Kina', marketAttempt.missing.length ? missingBuyNote : 'Materiali per ' + craftCount + ' craft', marketAttempt.cost == null ? 'warn' : ''),
-    box('Craftato', ownAttempt.cost == null ? 'Incompleto' : format(ownAttempt.cost * craftCount) + ' Kina', ownAttempt.missing.length ? ownAttempt.missing.length + ' prezzi mancanti' : fallbackItems.size ? fallbackItems.size + ' pezzi comprati perché la loro catena non è valutabile' : state.materialMode === 'optimize' ? 'Materiali al percorso meno caro, pezzi precedenti craftati' : 'Materiali comprati al market', ownAttempt.cost == null ? 'warn' : 'accent'),
-    box(recipe.combo ? 'Combo al 25% attese' : 'Oggetti attesi', recipe.combo ? formatAttempts(expectedComboActivations) : formatAttempts(expectedOutput), recipe.combo ? (recipe.successChance != null && !recipe.safe ? formatAttempts(expectedComboResults) + ' oggetti combo riusciti stimati considerando i fallimenti' : craftCount + ' craft × ' + formatPercent(comboRate * 100) + '% · valore medio') : 'Da ' + craftCount + ' craft'),
-    box(recipe.combo ? 'Valore delle combo riuscite' : 'Valore atteso sul mercato', sale == null ? '—' : format(sale) + ' Kina', recipe.bound ? 'Risultato vincolato: non vendibile' : output ? (output.listings || 0) + ' annunci · ' + formatAttempts(expectedOutput) + ' pezzi riusciti attesi' : 'Nessun annuncio')
-  );
+  const summaryCards = [
+    box(isLevel70Combo ? 'Costo comprando / 1 craft' : 'Costo comprando / 1 ' + resultLabel, shownMarketCost == null ? 'Prezzo mancante' : format(shownMarketCost) + ' Kina', marketAttempt.missing.length ? missingBuyNote : 'Totale materiali per ' + craftCount + ' craft: ' + format(marketAttempt.cost * craftCount) + ' Kina', shownMarketCost == null ? 'warn' : ''),
+    box(isLevel70Combo ? 'Costo craftato / 1 craft' : 'Costo craftato / 1 ' + resultLabel, shownOwnCost == null ? 'Incompleto' : format(shownOwnCost) + ' Kina', ownAttempt.missing.length ? ownAttempt.missing.length + ' prezzi mancanti' : 'Totale per ' + craftCount + ' craft: ' + format(ownAttempt.cost * craftCount) + ' Kina' + (fallbackItems.size ? ' · alcuni pezzi comprati' : ''), shownOwnCost == null ? 'warn' : 'accent'),
+  ];
+  summaryCards.push(box(recipe.combo ? 'Combo al 25% attese' : 'Oggetti attesi', recipe.combo ? formatAttempts(expectedComboActivations) : formatAttempts(expectedOutput), recipe.combo ? (recipe.successChance != null && !recipe.safe ? formatAttempts(expectedComboResults) + ' oggetti combo riusciti stimati considerando i fallimenti' : craftCount + ' craft × ' + formatPercent(comboRate * 100) + '% · valore medio') : 'Da ' + craftCount + ' craft', isLevel70Combo ? 'wide' : ''));
+  if (isLevel70Combo) {
+    summaryCards.push(
+      box('Prezzo mercato risultato normale Lv. 63', level63Price == null ? '—' : format(level63Price) + ' Kina', baseOutput ? (baseOutput.listings || 0) + ' annunci · prezzo minimo' : 'Nessun annuncio'),
+      box('Prezzo mercato combo Lv. 70', marketUnitPrice == null ? '—' : format(marketUnitPrice) + ' Kina', output ? (output.listings || 0) + ' annunci · prezzo minimo' : 'Nessun annuncio')
+    );
+    summaryCards.push(
+      box('Ricavo netto Lv. 63', level63Net == null ? '—' : format(level63Net) + ' Kina', 'Prezzo mercato meno tassa di vendita 10%'),
+      box('Ricavo netto combo Lv. 70', level70Net == null ? '—' : format(level70Net) + ' Kina', 'Prezzo mercato meno tassa di vendita 10%')
+    );
+    summaryCards.push(
+      box('Guadagno / perdita netta se esce Lv. 63', level63Profit == null ? '—' : (level63Profit >= 0 ? '+' : '−') + format(Math.abs(level63Profit)) + ' Kina', level63Profit == null ? 'Servono costo craftato e prezzo Lv. 63' : 'Ricavo netto Lv. 63 − costo di 1 craft · inserzione esclusa', 'outcomeProfit ' + (level63Profit == null ? '' : level63Profit >= 0 ? 'gain' : 'loss')),
+      box('Guadagno / perdita netta se esce combo Lv. 70', level70Profit == null ? '—' : (level70Profit >= 0 ? '+' : '−') + format(Math.abs(level70Profit)) + ' Kina', level70Profit == null ? 'Servono costo craftato e prezzo Lv. 70' : 'Ricavo netto Lv. 70 − costo di 1 craft · inserzione esclusa', 'outcomeProfit ' + (level70Profit == null ? '' : level70Profit >= 0 ? 'gain' : 'loss'))
+    );
+  } else {
+    summaryCards.push(box('Prezzo mercato / 1 ' + resultLabel, marketUnitPrice == null ? '—' : format(marketUnitPrice) + ' Kina', recipe.bound ? 'Risultato vincolato: non vendibile' : output ? (output.listings || 0) + ' annunci · netto tassa 10%: ' + format(marketUnitNet) + ' Kina' : 'Nessun annuncio'));
+    summaryCards.push(box('Guadagno / perdita netta per 1 ' + resultLabel, unitProfit == null ? '—' : (unitProfit >= 0 ? '+' : '−') + format(Math.abs(unitProfit)) + ' Kina', unitProfit == null ? 'Servono costo craftato e prezzo di mercato' : 'Ricavo netto − costo medio craftato · inserzione esclusa', 'profitResult ' + (unitProfit == null ? '' : unitProfit >= 0 ? 'gain' : 'loss')));
+  }
+  numbers.append(...summaryCards);
   pane.append(numbers);
   const heading = document.createElement('h3'); heading.textContent = recipe.transferFrom ? 'Equipaggiamento e materiali necessari' : 'Materiali necessari'; pane.append(heading);
   const table = document.createElement('table');
@@ -434,7 +530,7 @@ function renderDetail() {
     const tr = document.createElement('tr');
     const name = document.createElement('td'); name.className = 'material';
     const nameWrap = document.createElement('div'); nameWrap.className = 'materialName';
-    const nameText = document.createElement('span'); nameText.textContent = nameOf(row.key) + (row.transfer ? ' · da trasferire' : '');
+    const nameText = document.createElement('span'); nameText.className = 'itemGrade' + gradeClass(row.key); nameText.textContent = nameOf(row.key) + (row.transfer ? ' · da trasferire' : '');
     nameWrap.append(iconOf(row.key), nameText); name.append(nameWrap);
     const count = document.createElement('td'); count.textContent = formatAttempts(row.count);
     const priceCell = document.createElement('td');
@@ -446,7 +542,7 @@ function renderDetail() {
     input.addEventListener('change', () => {
       if (input.value === '') localStorage.removeItem(overrideKey(row.key));
       else if (Number.isFinite(Number(input.value)) && Number(input.value) >= 0) localStorage.setItem(overrideKey(row.key), input.value);
-      renderDetail();
+      renderRecommendations(); renderDetail();
     });
     const source = document.createElement('div'); source.className = 'sourceTag';
     source.textContent = manualValue != null && manualValue !== '' ? 'Prezzo manuale' : row.market?.price == null ? (GLOBAL_VENDOR_PRICES[row.key] != null ? 'Negoziante Global · ' + format(GLOBAL_VENDOR_PRICES[row.key]) + ' Kina' : row.transfer ? 'Nessun annuncio: se lo possiedi, inserisci 0' : 'Nessun annuncio: inserisci il prezzo') : 'Mercato ' + format(row.market.price) + ' Kina · ' + (row.market.listings || 0) + ' annunci';
@@ -482,11 +578,11 @@ async function loadPrices(preserveOld = false) {
     state.fetchedAt = result.retrieved_at;
     const time = new Date(state.fetchedAt).toLocaleString('it-IT');
     status(state.prices.size + ' oggetti dal mercato · consultazione ' + time + ' · prezzi minimi degli annunci', 'good');
-    renderQuickPrices(); renderResults(); renderDetail();
+    renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail();
   } catch (error) {
     if (!preserveOld) state.prices = new Map();
     status((preserveOld ? 'Aggiornamento non riuscito; restano i prezzi precedenti: ' : 'Prezzi non disponibili: ') + error.message + '. Puoi inserire prezzi manuali nelle ricette.', 'error');
-    renderQuickPrices(); renderResults(); renderDetail();
+    renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail();
   } finally { $('reload').disabled = false; }
 }
 
@@ -497,7 +593,7 @@ async function init() {
   const saved = Number(localStorage.getItem('aion2craft:server'));
   if (state.servers.some(server => server.server_id === saved)) state.server = saved;
   state.region = state.servers.find(server => server.server_id === state.server)?.region || 'EU';
-  fillRegions(); fillServers(); fillModes(); fillProfessions(); fillCategories(); renderQuickPrices(); chooseFirst();
+  fillRegions(); fillServers(); fillModes(); fillProfessions(); fillCategories(); renderQuickPrices(); renderRecommendations(); chooseFirst();
   await loadPrices();
 }
 
@@ -536,6 +632,7 @@ export const GLOBAL_VENDOR_PRICES = Object.freeze({
   '531060003': 1000,  // Speed Scroll
   '531060004': 1000,  // Courage Scroll
   '531060027': 1000,  // Benediction Scroll
+  '630554001': 220,   // Sugar
   '630554005': 880,   // Verteron Pepper
   '630554011': 880,   // Altgard Pepper
   '630554003': 880,   // Ulmus Oil

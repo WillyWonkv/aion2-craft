@@ -71,6 +71,7 @@ assert.equal(missingCatalyst.ownUnit('610740015').cost, 420);
 assert.equal(GLOBAL_VENDOR_PRICES['630520007'], 4650);
 assert.equal(GLOBAL_VENDOR_PRICES['630520008'], 5600);
 assert.equal(GLOBAL_VENDOR_PRICES['630520009'], 6550);
+assert.equal(GLOBAL_VENDOR_PRICES['630554001'], 220);
 const scaleRecipe = recipes.find(entry => entry.qr === 'light' && global.items[entry.out]?.n === 'Enhanced Thick Balaur Scale');
 const scaleModel = createCostModel(global, key => key === scaleRecipe.in[0][0] ? 100 : null, 'light', () => false, { optimizeMaterials: true });
 assert.equal(scaleModel.ownAttempt(scaleRecipe).cost, 4850);
