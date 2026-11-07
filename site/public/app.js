@@ -303,7 +303,7 @@ function renderRecommendations() {
     const rank = document.createElement('span'); rank.className = 'recommendationRank'; rank.textContent = '#' + (index + 1);
     const head = document.createElement('div'); head.className = 'recommendationHead';
     const text = document.createElement('div'); text.className = 'recommendationText';
-    const name = document.createElement('strong'); name.className = 'itemGrade' + gradeClass(entry.targetKey); name.textContent = nameOf(entry.targetKey); name.title = name.textContent;
+    const name = document.createElement('strong'); name.className = 'itemGrade' + gradeClass(entry.targetKey); name.textContent = recommendationItemName(entry.targetKey); name.title = name.textContent;
     const route = document.createElement('small'); route.textContent = (entry.recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' · ' + (categoryLabels[categoryOf(entry.recipe)] || categoryOf(entry.recipe));
     text.append(name, route); head.append(iconOf(entry.targetKey), text, rank);
     const gainLabel = document.createElement('span'); gainLabel.className = 'recommendationGainLabel'; gainLabel.textContent = 'Guadagno stimato';
@@ -321,6 +321,14 @@ function renderRecommendations() {
     });
     return card;
   }));
+}
+
+function recommendationItemName(key) {
+  const name = nameOf(key);
+  if (name.startsWith('Splendent True Dragon Lord ')) return name + ' · Lv. 70';
+  if (name.startsWith('True Dragon Lord ')) return name + ' · Lv. 63';
+  const level = state.graph.items?.[String(key)]?.level;
+  return level ? name + ' · Lv. ' + level : name;
 }
 
 function renderBuyRecommendations() {
@@ -359,7 +367,7 @@ function renderBuyRecommendations() {
     const card = document.createElement('button'); card.type = 'button'; card.className = 'recommendationCard';
     const head = document.createElement('div'); head.className = 'recommendationHead';
     const text = document.createElement('div'); text.className = 'recommendationText';
-    const name = document.createElement('strong'); name.className = 'itemGrade' + gradeClass(entry.key); name.textContent = nameOf(entry.key); name.title = name.textContent;
+    const name = document.createElement('strong'); name.className = 'itemGrade' + gradeClass(entry.key); name.textContent = recommendationItemName(entry.key); name.title = name.textContent;
     const route = document.createElement('small'); route.textContent = 'Compra il prodotto finito'; text.append(name, route);
     const rank = document.createElement('span'); rank.className = 'recommendationRank'; rank.textContent = '#' + (index + 1); head.append(iconOf(entry.key), text, rank);
     const label = document.createElement('span'); label.className = 'recommendationGainLabel'; label.textContent = 'Risparmio acquistando';
