@@ -8,6 +8,8 @@ La sezione **Craft consigliati** confronta il costo del percorso craftato più e
 
 La scheda **Calculator** serve a registrare una sequenza reale di crafting per armi, armature e gioielli. Scegli professione, categoria e oggetto iniziale; per ogni passaggio inserisci i craft tentati e le combo ottenute (per le ricette rischiose, anche i risultati normali). Le combo utilizzate per proseguire la sequenza non vengono contate come vendute. Il riepilogo mostra spesa stimata, ricavo dopo la tassa del 10% e guadagno o perdita. I dati inseriti si salvano nel browser.
 
+La scheda **Transfer Crafting** segue la progressione dell’oggetto trasferito con icone e frecce: oggetto di partenza → risultato normale → eventuale combo. I passaggi indicano i livelli 63→70 sicuro, 70→78 (combo 86), 78→86 sicuro, 86→94 (combo 102) e 94→102 sicuro.
+
 Il campo **Quantità da craftare** indica quanti craft vuoi eseguire. Il programma moltiplica i materiali per quel numero e mostra quante combo sono attese al 25%: per esempio, 20 craft corrispondono in media a 5 attivazioni combo.
 
 Nel dettaglio True/Star Dragon, il costo indicato è quello di **un singolo craft**. Vengono mostrati separatamente prezzo lordo e ricavo netto del risultato normale livello 63 e della combo livello 70. Il ricavo netto usa la tassa di vendita del 10%; i due guadagni sottraggono il costo del craft dal rispettivo ricavo netto. La probabilità della combo resta indicata a parte e non moltiplica questi confronti. L'eventuale tariffa di inserzione, pagata separatamente, non è inclusa perché il suo valore Global non è pubblicato in modo stabile.

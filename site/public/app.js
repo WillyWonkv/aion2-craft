@@ -2,7 +2,7 @@ import { createCostModel, GLOBAL_VENDOR_PRICES } from './cost-model.js';
 
 const $ = id => document.getElementById(id);
 const VAIZEL_SERVER = { server_id: 11303, region: 'EU', name: 'Vaizel', faction: 'Elyos' };
-const state = { graph: null, servers: [VAIZEL_SERVER], prices: new Map(), region: 'EU', server: VAIZEL_SERVER.server_id, mode: 'crafting', profession: 'blacksmithing', category: 'all', selected: null, materialMode: 'optimize', fetchedAt: null };
+const state = { graph: null, servers: [VAIZEL_SERVER], prices: new Map(), quickPriceHistory: new Map(), region: 'EU', server: VAIZEL_SERVER.server_id, mode: 'crafting', profession: 'blacksmithing', category: 'all', selected: null, materialMode: 'optimize', fetchedAt: null };
 let modalHistory = null;
 const format = value => value == null || !Number.isFinite(value) ? '—' : Math.round(value).toLocaleString('it-IT');
 const formatAttempts = value => Number(value).toLocaleString('it-IT', { maximumFractionDigits: 2 });
@@ -69,15 +69,33 @@ function renderQuickPrices() {
   if (!list || !state.graph) return;
   list.replaceChildren(...QUICK_PRICE_ITEMS.map(key => {
     const market = state.prices.get(key);
-    const card = document.createElement('button'); card.type = 'button'; card.className = 'quickPrice'; card.setAttribute('aria-label', 'Mostra lo storico prezzo di ' + nameOf(key));
+    const points = state.quickPriceHistory.get(key) || getPriceHistory(key);
+    const average = points.length ? points.reduce((sum, point) => sum + Number(point.p), 0) / points.length : null;
+    const currentPrice = market?.price == null ? null : Number(market.price);
+    const signal = average == null || currentPrice == null ? 'neutral' : currentPrice < average ? 'below' : currentPrice > average ? 'above' : 'neutral';
+    const card = document.createElement('button'); card.type = 'button'; card.className = 'quickPrice' + (signal === 'neutral' ? '' : ' price-' + signal); card.setAttribute('aria-label', 'Mostra lo storico prezzo di ' + nameOf(key) + (signal === 'below' ? ': sotto la media' : signal === 'above' ? ': sopra la media' : ''));
     const text = document.createElement('div');
     const name = document.createElement('span'); name.className = 'quickPriceName itemGrade' + gradeClass(key); name.textContent = nameOf(key); name.title = name.textContent;
     const price = document.createElement('strong'); price.textContent = market?.price == null ? '—' : format(Number(market.price)) + ' Kina';
     const listings = document.createElement('small'); listings.textContent = market ? (market.listings || 0) + ' annunci' : 'Prezzo non disponibile';
-    text.append(name, price, listings); card.append(iconOf(key), text);
+    text.append(name, price, listings);
+    const itemIcon = iconOf(key, 'quickPriceIcon');
+    if (signal !== 'neutral') itemIcon.classList.add('signal-' + signal);
+    card.append(itemIcon, text);
     card.addEventListener('click', () => openMarketModal(key));
     return card;
   }));
+}
+
+async function loadQuickPriceHistory() {
+  try {
+    const query = new URLSearchParams({ server: String(state.server), items: QUICK_PRICE_ITEMS.join(',') });
+    const response = await fetch('/api/history?' + query, { cache: 'no-cache' });
+    const result = await response.json();
+    if (!response.ok || !result.histories) return;
+    state.quickPriceHistory = new Map(Object.entries(result.histories));
+    renderQuickPrices();
+  } catch { /* Usa lo storico locale del browser come ripiego. */ }
 }
 
 const HISTORY_LIMIT = 24 * 60 * 60 * 1000;
@@ -255,6 +273,35 @@ function professionRecipes() {
   return recipes().filter(([, recipe]) => recipe.type === recipeType && recipe.p === state.profession && (!faction || recipe.qr === (faction === 'Elyos' ? 'light' : 'dark')) && (state.mode !== 'calculator' || (SEQUENCE_CATEGORIES.has(categoryOf(recipe)) && recipe.combo && !recipe.safe)));
 }
 
+const TRANSFER_LEVELS = {
+  1: { from: 63, to: 70, guaranteed: true },
+  2: { from: 70, to: 78, combo: 86 },
+  3: { from: 78, to: 86, guaranteed: true },
+  4: { from: 86, to: 94, combo: 102 },
+  5: { from: 94, to: 102, guaranteed: true },
+};
+
+function transferStageNumber(recipe, seen = new Set()) {
+  if (!recipe?.transferFrom) return 0;
+  const identity = recipe.out + ':' + recipe.transferFrom;
+  if (seen.has(identity)) return 1;
+  const nextSeen = new Set(seen).add(identity);
+  const producers = Object.values(state.graph?.recipes || {}).filter(candidate =>
+    candidate.type === 'transfer' && candidate !== recipe && candidate.p === recipe.p && candidate.qr === recipe.qr &&
+    categoryOf(candidate) === categoryOf(recipe) &&
+    [candidate.out, candidate.combo].some(item => item != null && String(item) === String(recipe.transferFrom))
+  );
+  if (!producers.length) return 1;
+  return 1 + Math.max(...producers.map(candidate => transferStageNumber(candidate, nextSeen)));
+}
+
+function transferLevelLabel(recipe) {
+  const stage = transferStageNumber(recipe);
+  const levels = TRANSFER_LEVELS[stage];
+  if (!levels) return '';
+  return 'Lv. ' + levels.from + ' → ' + levels.to + (levels.combo ? ' · Combo Lv. ' + levels.combo : ' · Sicuro');
+}
+
 function sequenceFor(rootId) {
   const root = state.graph?.recipes?.[rootId];
   if (!root) return [];
@@ -287,11 +334,18 @@ function visibleRecipes() {
       (state.category === 'all' || categoryOf(recipe) === state.category) &&
       (!query || nameOf(recipe.out).toLocaleLowerCase().includes(query))
     )
-    .sort(([, a], [, b]) =>
+    .sort(([, a], [, b]) => {
+      if (state.mode === 'transfer') {
+        return categoryOrder.indexOf(categoryOf(a)) - categoryOrder.indexOf(categoryOf(b)) ||
+          transferStageNumber(a) - transferStageNumber(b) ||
+          nameOf(a.out).localeCompare(nameOf(b.out), 'en');
+      }
+      return (
       (Number(a.ml) || 0) - (Number(b.ml) || 0) ||
       nameOf(a.out).localeCompare(nameOf(b.out), 'en') ||
       Number(Boolean(a.safe)) - Number(Boolean(b.safe))
-    );
+      );
+    });
 }
 
 function chooseFirst() {
@@ -350,10 +404,12 @@ function renderResults() {
   $('count').textContent = '(' + matching.length + ')';
   const listHeading = document.querySelector('.panelHead h2');
   const listHint = document.querySelector('.panelHead p');
-  if (listHeading) listHeading.firstChild.textContent = state.mode === 'calculator' ? 'Oggetto di partenza ' : 'Ricette ';
+  if (listHeading) listHeading.firstChild.textContent = state.mode === 'calculator' ? 'Oggetto di partenza ' : state.mode === 'transfer' ? 'Progressione Transfer Crafting ' : 'Ricette ';
   if (listHint) listHint.textContent = state.mode === 'calculator'
     ? 'Scegli una categoria e l’oggetto iniziale della sequenza; puoi cercarlo per nome.'
-    : 'Scegli prima il tipo di crafting e la professione, poi filtra per categoria o cerca il nome.';
+    : state.mode === 'transfer'
+      ? 'La linea mostra oggetto trasferito → risultato normale → eventuale combo, con il livello ottenuto in ogni passaggio.'
+      : 'Scegli prima il tipo di crafting e la professione, poi filtra per categoria o cerca il nome.';
   const list = $('results');
   list.replaceChildren();
   if (!matching.length) {
@@ -366,29 +422,43 @@ function renderResults() {
   for (const [id, recipe] of matching) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'result' + (state.selected === id ? ' active' : '');
+    button.className = 'result' + (state.mode === 'transfer' ? ' transferResult' : '') + (state.selected === id ? ' active' : '');
     const icons = document.createElement('div'); icons.className = 'resultIcons';
-    icons.append(iconOf(recipe.out));
+    if (state.mode === 'transfer' && recipe.transferFrom) {
+      const sourceIcon = iconOf(recipe.transferFrom); sourceIcon.classList.add('transferSourceIcon'); sourceIcon.title = 'Oggetto di partenza: ' + nameOf(recipe.transferFrom);
+      icons.append(sourceIcon);
+      const transferArrow = document.createElement('span'); transferArrow.className = 'resultIconArrow'; transferArrow.textContent = '→';
+      const resultIcon = iconOf(recipe.out); resultIcon.classList.add('transferResultIcon');
+      icons.append(transferArrow, resultIcon);
+    } else icons.append(iconOf(recipe.out));
     if (recipe.combo) {
       const iconArrow = document.createElement('span'); iconArrow.className = 'resultIconArrow'; iconArrow.textContent = '→';
       icons.append(iconArrow, iconOf(recipe.combo));
     }
     const text = document.createElement('div');
     text.className = 'resultText';
-    const titleLine = document.createElement('div'); titleLine.className = 'resultTitleLine';
+    const titleLine = document.createElement('div'); titleLine.className = 'resultTitleLine' + (state.mode === 'transfer' ? ' transferTitleLine' : '');
     const title = document.createElement('strong'); title.className = 'itemGrade' + gradeClass(recipe.out);
     title.textContent = nameOf(recipe.out);
     titleLine.append(title);
     if (recipe.combo) {
-      const nameArrow = document.createElement('span'); nameArrow.className = 'resultNameArrow'; nameArrow.textContent = '→';
       const comboName = document.createElement('strong'); comboName.className = 'resultComboName itemGrade' + gradeClass(recipe.combo); comboName.textContent = nameOf(recipe.combo); comboName.title = nameOf(recipe.combo);
-      titleLine.append(nameArrow, comboName);
+      if (state.mode === 'transfer') {
+        const comboLine = document.createElement('div'); comboLine.className = 'transferComboLine';
+        const nameArrow = document.createElement('span'); nameArrow.className = 'resultNameArrow'; nameArrow.textContent = '↳';
+        comboLine.append(nameArrow, comboName); text.append(titleLine, comboLine);
+      } else {
+        const nameArrow = document.createElement('span'); nameArrow.className = 'resultNameArrow'; nameArrow.textContent = '→';
+        titleLine.append(nameArrow, comboName);
+      }
     }
-    text.append(titleLine);
+    if (!recipe.combo || state.mode !== 'transfer') text.append(titleLine);
     const sub = document.createElement('span');
     sub.textContent = state.mode === 'calculator'
       ? 'Oggetto di partenza · ' + sequenceFor(id).length + ' passaggi'
-      : (categoryLabels[categoryOf(recipe)] || 'Materiali') + ' · ' + masteryLabel(recipe.ml) + (recipe.safe ? ' · Sicuro · livello 63 vincolato' : recipe.successChance != null ? ' · Combo · risultato livello 70' : '');
+      : state.mode === 'transfer'
+        ? 'Da ' + nameOf(recipe.transferFrom) + ' · Passaggio ' + transferStageNumber(recipe) + '/5 · ' + transferLevelLabel(recipe)
+        : (categoryLabels[categoryOf(recipe)] || 'Materiali') + ' · ' + masteryLabel(recipe.ml) + (recipe.safe ? ' · Sicuro · livello 63 vincolato' : recipe.successChance != null ? ' · Combo · risultato livello 70' : '');
     sub.className = 'resultMeta';
     text.append(sub);
     button.append(icons, text);
@@ -630,7 +700,7 @@ function renderDetail() {
   marketButton.addEventListener('click', () => openMarketModal(String(recipe.combo || recipe.out)));
   titleRow.append(marketButton);
   const meta = document.createElement('div'); meta.className = 'detailMeta muted';
-  meta.textContent = (recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' › ' + (professionLabels[recipe.p] || recipe.p || 'Crafting') + ' › ' + (categoryLabels[categoryOf(recipe)] || categoryOf(recipe)) + ' · ' + masteryLabel(recipe.ml) + ' · ' + (recipe.outq || 1) + ' per tentativo' + (recipe.safe ? ' · risultato sicuro livello 63' : recipe.successChance != null ? ' · combo livello 70' : '');
+  meta.textContent = (recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' › ' + (professionLabels[recipe.p] || recipe.p || 'Crafting') + ' › ' + (categoryLabels[categoryOf(recipe)] || categoryOf(recipe)) + ' · ' + masteryLabel(recipe.ml) + ' · ' + (recipe.outq || 1) + ' per tentativo' + (recipe.type === 'transfer' ? ' · Passaggio ' + transferStageNumber(recipe) + '/5 · ' + transferLevelLabel(recipe) : recipe.safe ? ' · risultato sicuro livello 63' : recipe.successChance != null ? ' · combo livello 70' : '');
   const control = document.createElement('div'); control.className = 'controls';
   const quantityWrap = document.createElement('div');
   const quantityLabel = document.createElement('label'); quantityLabel.htmlFor = 'craftQuantity'; quantityLabel.textContent = 'Quantità da craftare';
@@ -792,13 +862,13 @@ async function loadPrices(preserveOld = false, forceRefresh = preserveOld) {
     savePriceHistory(state.prices, Date.now());
     const time = new Date(state.fetchedAt).toLocaleString('it-IT');
     status(state.prices.size + ' oggetti dal mercato · consultazione ' + time + ' · prezzi minimi degli annunci', 'good');
-    renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail();
+    renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail(); void loadQuickPriceHistory();
     const dialog = $('marketModal');
     if (dialog.open && dialog.dataset.itemKey) await openMarketModal(dialog.dataset.itemKey, true);
   } catch (error) {
     if (!preserveOld) state.prices = new Map();
     status((preserveOld ? 'Aggiornamento non riuscito; restano i prezzi precedenti: ' : 'Prezzi non disponibili: ') + error.message + '. Puoi inserire prezzi manuali nelle ricette.', 'error');
-    renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail();
+    renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail(); void loadQuickPriceHistory();
     const dialog = $('marketModal');
     if (dialog.open && dialog.dataset.itemKey) await openMarketModal(dialog.dataset.itemKey, true);
   } finally {
