@@ -10,11 +10,8 @@ const formatPercent = value => Number(value).toLocaleString('it-IT', { maximumFr
 const MAX_CRAFT_SUCCESS = 0.9464;
 const MAX_COMBO_SUCCESS = 0.23 / (MAX_CRAFT_SUCCESS * 0.25);
 const MARKET_TAX_RATE = 0.10;
-const MANUAL_REFRESH_COOLDOWN_MS = 20_000;
 const AUTO_REFRESH_INTERVAL_MS = 60_000;
 const netSale = value => value == null ? null : Number(value) * (1 - MARKET_TAX_RATE);
-let manualRefreshAllowedAt = 0;
-let refreshCountdownTimer = null;
 const QUICK_PRICE_ITEMS = [
   '610511013', '610511015', '610511014',
   '610610013', '610610014', '610610015', '610610016',
@@ -1020,7 +1017,6 @@ function renderDetail() {
 async function loadPrices(preserveOld = false, forceRefresh = preserveOld) {
   if (!state.server) return;
   status((preserveOld ? 'Aggiornamento' : 'Caricamento') + ' prezzi di Vaizel · Europa…');
-  $('reload').disabled = true;
   try {
     const result = await getJSON('/api/prices?server=' + state.server + (forceRefresh ? '&refresh=' + Date.now() : ''));
     state.prices = new Map(result.items.map(item => [String(item.item_key), { name: item.name, price: item.price, listings: item.listings }]));
@@ -1037,39 +1033,7 @@ async function loadPrices(preserveOld = false, forceRefresh = preserveOld) {
     renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail(); void loadQuickPriceHistory();
     const dialog = $('marketModal');
     if (dialog.open && dialog.dataset.itemKey) await openMarketModal(dialog.dataset.itemKey, true);
-  } finally {
-    $('reload').disabled = false;
-    updateRefreshButton();
   }
-}
-
-function updateRefreshButton() {
-  const remaining = Math.max(0, manualRefreshAllowedAt - Date.now());
-  const button = $('reload');
-  const countdown = $('reloadCooldown');
-  if (!button || !countdown) return;
-  if (remaining > 0) {
-    button.disabled = true;
-    countdown.hidden = false;
-    countdown.textContent = Math.ceil(remaining / 1000) + ' s';
-  } else {
-    button.disabled = false;
-    countdown.hidden = true;
-    countdown.textContent = '';
-  }
-}
-
-function startManualRefreshCooldown() {
-  manualRefreshAllowedAt = Date.now() + MANUAL_REFRESH_COOLDOWN_MS;
-  if (refreshCountdownTimer) clearInterval(refreshCountdownTimer);
-  updateRefreshButton();
-  refreshCountdownTimer = setInterval(() => {
-    updateRefreshButton();
-    if (Date.now() >= manualRefreshAllowedAt) {
-      clearInterval(refreshCountdownTimer);
-      refreshCountdownTimer = null;
-    }
-  }, 250);
 }
 
 async function init() {
@@ -1083,10 +1047,5 @@ $('marketModal').addEventListener('click', event => { if (event.target === $('ma
 window.addEventListener('resize', () => { const dialog = $('marketModal'); if (dialog.open && dialog.dataset.itemKey) drawPriceChart(dialog.dataset.itemKey, modalHistory); });
 
 $('search').addEventListener('input', chooseFirst);
-$('reload').addEventListener('click', () => {
-  if (Date.now() < manualRefreshAllowedAt) return;
-  startManualRefreshCooldown();
-  loadPrices(true);
-});
 setInterval(() => loadPrices(true, false), AUTO_REFRESH_INTERVAL_MS);
 init().catch(error => status('Impossibile caricare i dati: ' + error.message + '. Riprova fra poco.', 'error'));
