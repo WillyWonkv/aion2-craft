@@ -58,6 +58,7 @@ $html = @'
     <dialog id="marketModal" class="marketModal" aria-labelledby="marketModalTitle"><div class="marketModalHead"><h2 id="marketModalTitle">Storico prezzo</h2><button id="closeMarketModal" type="button" aria-label="Chiudi">Chiudi</button></div><div class="marketModalBody"><div class="marketCurrent"><strong id="marketModalCurrent">—</strong><small id="marketModalCount">Nessuna rilevazione</small></div><canvas id="marketChart" class="marketChart" aria-label="Grafico dello storico prezzi"></canvas><div class="marketLegend"><span><i></i>Prezzo sotto la media</span><span><i class="legendRed"></i>Prezzo sopra la media</span><span><i class="legendAverage"></i>Media delle rilevazioni</span></div><div id="marketStats" class="marketStats" aria-label="Statistiche del prezzo nelle ultime 24 ore"></div><div id="marketSummary" class="marketSummary equal"></div><p class="marketExplain">La linea tratteggiata indica la media dei prezzi registrati nelle ultime 24 ore. Verde: prezzo sotto la media; rosso: prezzo sopra la media. Il collector salva una rilevazione al minuto anche quando la pagina è chiusa. Quando lo storico è appena iniziato, la linea può sembrare quasi retta: diventa più dettagliata man mano che si accumulano punti. È un confronto storico, non una previsione.</p></div></dialog>
     <div id="status" class="status" role="status" aria-live="polite">Caricamento ricette e prezzi di Vaizel…</div>
     <section class="recommendations" aria-labelledby="recommendationsTitle"><h2 id="recommendationsTitle">Craft consigliati</h2><p>Confronta costo dei materiali e ricavo dopo la tassa del 10%. Se il dettaglio mostra una perdita, conviene valutare l’acquisto dell’oggetto finito.</p><div id="recommendationList" class="recommendationList"></div></section>
+    <section class="recommendations" aria-labelledby="buyRecommendationsTitle"><h2 id="buyRecommendationsTitle">Acquisti consigliati</h2><p>Artisan's Splendent, True Dragon Lord Lv. 63 e Splendent True Dragon Lord Lv. 70: fino a 10 oggetti che costano meno comprati che craftati. Risparmio = costo craftato meno prezzo di acquisto, senza tassa di vendita.</p><div id="buyRecommendationList" class="recommendationList"></div></section>
     <section class="quickPrices" aria-labelledby="quickPricesTitle"><h2 id="quickPricesTitle">Prezzi rapidi del server</h2><div id="quickPriceList" class="quickPriceList"></div></section>
     <nav id="modes" class="modeMenu" aria-label="Tipo di crafting"></nav>
     <nav id="professions" class="menu" aria-label="Professioni di crafting"></nav>
@@ -331,6 +332,7 @@ async function openMarketModal(itemKey, forceRefresh = false) {
 }
 
 function renderRecommendations() {
+  renderBuyRecommendations();
   const list = $('recommendationList');
   if (!list || !state.graph) return;
   if (!state.prices.size) {
@@ -395,6 +397,72 @@ function renderRecommendations() {
     });
     return card;
   }));
+}
+
+function renderBuyRecommendations() {
+  const list = $('buyRecommendationList');
+  if (!list || !state.graph) return;
+  const faction = serverFaction() === 'Asmodian' ? 'dark' : 'light';
+  const model = createCostModel(state.graph, unitPrice, faction, key => localStorage.getItem(overrideKey(key)) === '0', {
+    optimizeMaterials: true,
+    successRateFor: id => state.graph.recipes[id]?.successChance != null ? MAX_CRAFT_SUCCESS : undefined,
+    comboSuccessRateFor: id => state.graph.recipes[id]?.comboSuccessChance != null ? MAX_COMBO_SUCCESS : undefined,
+  });
+  const candidates = new Map();
+  for (const [id, recipe] of recipes()) {
+    if (recipe.type !== 'crafting' || recipe.qr !== faction || recipe.bound) continue;
+    const attempt = model.ownAttempt(recipe);
+    if (attempt.cost == null || attempt.missing.length) continue;
+    const dragon = recipe.successChance != null && !recipe.safe;
+    for (const key of [...new Set([recipe.out, recipe.combo].filter(Boolean))].map(String)) {
+      const itemType = state.graph.items?.[key]?.mc || state.graph.items?.[String(recipe.out)]?.mc;
+      if (!['weapon', 'armor', 'accessory'].includes(itemType)) continue;
+      if (!/^(Artisan's Splendent |(?:Splendent )?True Dragon Lord )/.test(nameOf(key))) continue;
+      const market = state.prices.get(key);
+      if (!(market?.price > 0) || !(market.listings > 0)) continue;
+      const cost = dragon ? attempt.cost : model.ownUnit(key).cost;
+      if (cost == null) continue;
+      const previous = candidates.get(key);
+      if (!previous || cost < previous.cost) candidates.set(key, { id, recipe, key, market, cost, saving: cost - Number(market.price) });
+    }
+  }
+  const entries = [...candidates.values()].filter(entry => entry.saving > 0).sort((a, b) => b.saving - a.saving).slice(0, 10);
+  list.replaceChildren();
+  if (!entries.length) {
+    const empty = document.createElement('p'); empty.className = 'recommendationEmpty'; empty.textContent = state.prices.size ? 'Nessun acquisto più conveniente del craft nei prezzi disponibili.' : 'Gli acquisti consigliati appariranno dopo il caricamento dei prezzi.'; list.append(empty); return;
+  }
+  for (const [index, entry] of entries.entries()) {
+    const card = document.createElement('button'); card.type = 'button'; card.className = 'recommendationCard';
+    const head = document.createElement('div'); head.className = 'recommendationHead';
+    const text = document.createElement('div'); text.className = 'recommendationText';
+    const name = document.createElement('strong'); name.className = 'itemGrade' + gradeClass(entry.key); name.textContent = nameOf(entry.key); name.title = name.textContent;
+    const route = document.createElement('small'); route.textContent = 'Compra il prodotto finito'; text.append(name, route);
+    const rank = document.createElement('span'); rank.className = 'recommendationRank'; rank.textContent = '#' + (index + 1); head.append(iconOf(entry.key), text, rank);
+    const label = document.createElement('span'); label.className = 'recommendationGainLabel'; label.textContent = 'Risparmio acquistando';
+    const saving = document.createElement('strong'); saving.className = 'recommendationGain'; saving.textContent = format(entry.saving) + ' Kina';
+    const detail = document.createElement('small'); detail.className = 'recommendationDetails'; detail.textContent = 'Craft ' + format(entry.cost) + ' · acquisto ' + format(entry.market.price) + ' Kina · ' + entry.market.listings + ' annunci';
+    card.append(head, label, saving, detail);
+    card.addEventListener('click', () => {
+      state.mode = 'crafting'; state.profession = entry.recipe.p; state.category = categoryOf(entry.recipe); state.selected = entry.id; $('search').value = '';
+      fillModes(); fillProfessions(); fillCategories(); renderResults(); renderDetail(); document.querySelector('.layout')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    list.append(card);
+  }
+}
+
+function completeRecipeItemCategories(graph) {
+  // Normal and combo results belong to the same equipment category.
+  // Fill only missing fields so categories supplied by the dataset stay authoritative.
+  for (const recipe of Object.values(graph.recipes || {})) {
+    if (!recipe.combo) continue;
+    const normal = graph.items?.[String(recipe.out)];
+    const combo = graph.items?.[String(recipe.combo)];
+    if (!normal || !combo) continue;
+    for (const field of ['mc', 'sc']) {
+      if (!combo[field] && normal[field]) combo[field] = normal[field];
+      if (!normal[field] && combo[field]) normal[field] = combo[field];
+    }
+  }
 }
 
 function recipes() {
@@ -1121,6 +1189,7 @@ async function loadPrices(preserveOld = false, forceRefresh = preserveOld) {
 
 async function init() {
   state.graph = await getJSON('/api/graph');
+  completeRecipeItemCategories(state.graph);
   fillModes(); fillProfessions(); fillCategories(); renderQuickPrices(); renderRecommendations(); chooseFirst();
   await loadPrices();
 }
