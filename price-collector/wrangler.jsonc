@@ -10,7 +10,7 @@
     {
       "binding": "PRICE_HISTORY",
       "database_name": "aion2-price-history",
-      "database_id": "SET_D1_DATABASE_ID_HERE"
+      "database_id": "0fbba349-6387-4183-b738-d19c3bde5724"
     }
   ],
   "vars": {
