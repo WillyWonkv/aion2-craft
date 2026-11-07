@@ -180,7 +180,10 @@ function drawPriceChart(itemKey, historyOverride = null) {
   area.addColorStop(0, currentValue <= average ? '#36dc8b55' : '#ff667355');
   area.addColorStop(1, '#0d152200');
   context.beginPath();
-  points.forEach((point, index) => { if (index === 0) context.moveTo(x(point.t), y(point.p)); else context.lineTo(x(point.t), y(point.p)); });
+  points.forEach((point, index) => {
+    if (index === 0) context.moveTo(x(point.t), y(point.p));
+    else { context.lineTo(x(point.t), y(points[index - 1].p)); context.lineTo(x(point.t), y(point.p)); }
+  });
   context.lineTo(x(points.at(-1).t), pad.t + plotH); context.lineTo(x(points[0].t), pad.t + plotH); context.closePath();
   context.fillStyle = area; context.fill();
 
@@ -193,9 +196,19 @@ function drawPriceChart(itemKey, historyOverride = null) {
   if (points.length > 1) {
     for (let i = 1; i < points.length; i++) {
       const previous = points[i - 1], point = points[i];
-      context.beginPath(); context.moveTo(x(previous.t), y(previous.p)); context.lineTo(x(point.t), y(point.p));
-      context.strokeStyle = (Number(previous.p) + Number(point.p)) / 2 <= average ? '#51e39a' : '#ff6e76';
+      context.beginPath(); context.moveTo(x(previous.t), y(previous.p)); context.lineTo(x(point.t), y(previous.p));
+      context.strokeStyle = Number(previous.p) <= average ? '#51e39a' : '#ff6e76';
       context.lineWidth = 2.4; context.lineJoin = 'round'; context.lineCap = 'round'; context.stroke();
+      if (Number(previous.p) !== Number(point.p)) {
+        const crossesAverage = (Number(previous.p) - average) * (Number(point.p) - average) < 0;
+        const middle = crossesAverage ? average : Number(point.p);
+        context.beginPath(); context.moveTo(x(point.t), y(previous.p)); context.lineTo(x(point.t), y(middle));
+        context.strokeStyle = Number(previous.p) <= average ? '#51e39a' : '#ff6e76'; context.stroke();
+        if (crossesAverage) {
+          context.beginPath(); context.moveTo(x(point.t), y(average)); context.lineTo(x(point.t), y(point.p));
+          context.strokeStyle = Number(point.p) <= average ? '#51e39a' : '#ff6e76'; context.stroke();
+        }
+      }
     }
     const markerStep = Math.max(1, Math.ceil(points.length / 52));
     points.forEach((point, index) => {
@@ -206,6 +219,26 @@ function drawPriceChart(itemKey, historyOverride = null) {
     });
   } else {
     context.beginPath(); context.arc(x(points[0].t), y(points[0].p), 4.5, 0, Math.PI * 2); context.fillStyle = lineColor; context.fill();
+  }
+  // Etichette sui tratti più ampi, evitando sovrapposizioni sui dati molto variabili.
+  const plateaus = [];
+  for (const point of points) {
+    const last = plateaus.at(-1);
+    if (last && Number(last.p) === Number(point.p)) last.end = point.t;
+    else { if (last) last.end = point.t; plateaus.push({ p: Number(point.p), start: point.t, end: point.t }); }
+  }
+  const occupied = [];
+  context.font = 'bold 11px system-ui';
+  for (const segment of [...plateaus].sort((a, b) => (b.end - b.start) - (a.end - a.start)).slice(0, width < 500 ? 3 : 6)) {
+    const label = format(segment.p) + ' Kina', labelW = context.measureText(label).width + 18;
+    const center = (x(segment.start) + x(segment.end)) / 2;
+    const left = Math.max(pad.l, Math.min(width - pad.r - labelW, center - labelW / 2));
+    const top = Math.max(4, Math.min(pad.t + plotH - 26, y(segment.p) - 31));
+    if (occupied.some(rect => left < rect.right + 8 && left + labelW > rect.left - 8 && top < rect.bottom + 6 && top + 23 > rect.top - 6)) continue;
+    occupied.push({ left, right: left + labelW, top, bottom: top + 23 });
+    context.fillStyle = '#101d2fee'; context.strokeStyle = segment.p <= average ? '#51e39a' : '#ff6e76'; context.lineWidth = 1;
+    context.beginPath(); context.roundRect(left, top, labelW, 23, 6); context.fill(); context.stroke();
+    context.fillStyle = '#edf5ff'; context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(label, left + labelW / 2, top + 12);
   }
   return { points, average, current: currentValue, min: dataMin, max: dataMax };
 }
