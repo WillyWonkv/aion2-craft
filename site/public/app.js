@@ -127,37 +127,90 @@ function drawPriceChart(itemKey, historyOverride = null) {
   const ratio = window.devicePixelRatio || 1;
   canvas.width = Math.max(1, Math.round(bounds.width * ratio));
   canvas.height = Math.max(1, Math.round(bounds.height * ratio));
-  context.scale(ratio, ratio);
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
   const width = bounds.width, height = bounds.height;
-  const pad = { l: 62, r: 18, t: 22, b: 36 };
-  const plotW = width - pad.l - pad.r, plotH = height - pad.t - pad.b;
-  const points = historyOverride || getPriceHistory(itemKey);
+  const pad = { l: 76, r: 22, t: 28, b: 42 };
+  const plotW = Math.max(1, width - pad.l - pad.r), plotH = Math.max(1, height - pad.t - pad.b);
+  const cutoff = Date.now() - HISTORY_LIMIT;
+  const points = [...(historyOverride || getPriceHistory(itemKey))]
+    .filter(point => Number.isFinite(Number(point.p)) && Number.isFinite(Number(point.t)) && Number(point.t) >= cutoff)
+    .sort((a, b) => Number(a.t) - Number(b.t));
   const current = state.prices.get(itemKey);
   if (current?.price != null && (!points.length || points.at(-1).p !== Number(current.price))) points.push({ t: Date.now(), p: Number(current.price) });
-  const values = points.map(point => point.p);
-  if (!values.length) {
-    context.fillStyle = '#9eafc6'; context.font = '13px system-ui'; context.textAlign = 'center'; context.fillText('Storico vuoto: aggiorna i prezzi per iniziare a raccogliere i punti.', width / 2, height / 2);
+  context.clearRect(0, 0, width, height);
+  context.fillStyle = '#0d1522'; context.fillRect(0, 0, width, height);
+  if (!points.length) {
+    context.fillStyle = '#b3c3d7'; context.font = '13px system-ui'; context.textAlign = 'center';
+    context.fillText('Lo storico si popolerà con le prossime rilevazioni automatiche.', width / 2, height / 2 - 8);
+    context.fillStyle = '#8296b0'; context.font = '11px system-ui';
+    context.fillText('Viene raccolto un prezzo al minuto; il grafico mostra al massimo 24 ore.', width / 2, height / 2 + 14);
     return { points, average: null, current: current?.price == null ? null : Number(current.price) };
   }
+  const values = points.map(point => Number(point.p));
   const average = values.reduce((sum, value) => sum + value, 0) / values.length;
   const currentValue = current?.price == null ? values.at(-1) : Number(current.price);
-  const min = Math.min(...values, average, currentValue), max = Math.max(...values, average, currentValue);
-  const span = Math.max(1, max - min), low = min - span * 0.12, high = max + span * 0.12;
-  const y = value => pad.t + (high - value) / (high - low) * plotH;
-  context.strokeStyle = '#26394f'; context.lineWidth = 1; context.fillStyle = '#91a5bd'; context.font = '10px system-ui'; context.textAlign = 'right';
-  for (let i = 0; i <= 4; i++) { const val = high - (high - low) * i / 4, yy = pad.t + plotH * i / 4; context.beginPath(); context.moveTo(pad.l, yy); context.lineTo(width - pad.r, yy); context.stroke(); context.fillText(format(val), pad.l - 8, yy + 3); }
-  if (points.length > 1) {
-    const start = points[0].t, end = points.at(-1).t, range = Math.max(1, end - start);
-    context.beginPath();
-    points.forEach((point, index) => { const x = pad.l + (points.length === 1 ? plotW / 2 : (point.t - start) / range * plotW); if (index === 0) context.moveTo(x, y(point.p)); else context.lineTo(x, y(point.p)); });
-    context.strokeStyle = currentValue > average ? '#ff7777' : '#64e49a'; context.lineWidth = 2.5; context.stroke();
-  } else {
-    context.fillStyle = '#91a5bd'; context.textAlign = 'center'; context.fillText('Serve almeno un altro aggiornamento per tracciare la linea del prezzo.', width / 2, height / 2);
+  const dataMin = Math.min(...values), dataMax = Math.max(...values);
+  const span = Math.max(1, dataMax - dataMin, Math.abs(dataMax) * 0.012);
+  const low = Math.max(0, dataMin - span * 0.14), high = dataMax + span * 0.14;
+  const y = value => pad.t + (high - value) / Math.max(1, high - low) * plotH;
+  const start = points[0].t, end = points.at(-1).t, timeRange = Math.max(1, end - start);
+  const x = timestamp => pad.l + (timeRange <= 1 ? plotW / 2 : (timestamp - start) / timeRange * plotW);
+
+  // Griglia e scala prezzi.
+  context.font = '10px system-ui'; context.textAlign = 'right'; context.textBaseline = 'middle';
+  for (let i = 0; i <= 4; i++) {
+    const value = high - (high - low) * i / 4, yy = pad.t + plotH * i / 4;
+    context.beginPath(); context.moveTo(pad.l, yy); context.lineTo(width - pad.r, yy);
+    context.strokeStyle = i === 4 ? '#33445b' : '#233248'; context.lineWidth = 1; context.stroke();
+    context.fillStyle = '#9aacc2'; context.fillText(format(value), pad.l - 10, yy);
   }
-  context.setLineDash([6, 5]); context.beginPath(); context.moveTo(pad.l, y(average)); context.lineTo(width - pad.r, y(average)); context.strokeStyle = '#e5edf7'; context.lineWidth = 1.5; context.stroke(); context.setLineDash([]);
-  context.textAlign = 'left'; context.fillStyle = '#dce7f7'; context.fillText('Media ' + format(average), pad.l + 6, Math.max(12, y(average) - 6));
-  if (points.length > 1) { context.textAlign = 'left'; context.fillStyle = '#91a5bd'; context.fillText(new Date(points[0].t).toLocaleDateString('it-IT'), pad.l, height - 12); context.textAlign = 'right'; context.fillText(new Date(points.at(-1).t).toLocaleString('it-IT', { hour: '2-digit', minute: '2-digit' }), width - pad.r, height - 12); }
-  return { points, average, current: currentValue };
+  context.beginPath(); context.moveTo(pad.l, pad.t); context.lineTo(pad.l, pad.t + plotH); context.lineTo(width - pad.r, pad.t + plotH);
+  context.strokeStyle = '#40536b'; context.lineWidth = 1; context.stroke();
+
+  // Tacche temporali distribuite sulla finestra realmente disponibile.
+  const tickCount = points.length < 2 ? 1 : width < 500 ? 3 : 5;
+  context.textAlign = 'center'; context.textBaseline = 'top'; context.fillStyle = '#9aacc2'; context.font = '10px system-ui';
+  for (let i = 0; i < tickCount; i++) {
+    const fraction = tickCount === 1 ? 0 : i / (tickCount - 1);
+    const timestamp = start + timeRange * fraction, xx = pad.l + plotW * fraction;
+    context.beginPath(); context.moveTo(xx, pad.t + plotH); context.lineTo(xx, pad.t + plotH + 4); context.strokeStyle = '#52647b'; context.stroke();
+    const label = new Date(timestamp).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    context.fillText(label, Math.max(34, Math.min(width - 34, xx)), pad.t + plotH + 9);
+  }
+
+  const lineColor = currentValue <= average ? '#51e39a' : '#ff6e76';
+  const area = context.createLinearGradient(0, pad.t, 0, pad.t + plotH);
+  area.addColorStop(0, currentValue <= average ? '#36dc8b55' : '#ff667355');
+  area.addColorStop(1, '#0d152200');
+  context.beginPath();
+  points.forEach((point, index) => { if (index === 0) context.moveTo(x(point.t), y(point.p)); else context.lineTo(x(point.t), y(point.p)); });
+  context.lineTo(x(points.at(-1).t), pad.t + plotH); context.lineTo(x(points[0].t), pad.t + plotH); context.closePath();
+  context.fillStyle = area; context.fill();
+
+  // Linea di media e linea prezzo, con una tonalità diversa sopra/sotto la media.
+  context.beginPath(); context.moveTo(pad.l, y(average)); context.lineTo(width - pad.r, y(average));
+  context.setLineDash([5, 5]); context.strokeStyle = '#dce7f7bb'; context.lineWidth = 1.4; context.stroke(); context.setLineDash([]);
+  context.font = '10px system-ui'; context.textAlign = 'left'; context.textBaseline = 'bottom'; context.fillStyle = '#e2ebf7';
+  context.fillText('MEDIA ' + format(average), pad.l + 7, y(average) - 5);
+
+  if (points.length > 1) {
+    for (let i = 1; i < points.length; i++) {
+      const previous = points[i - 1], point = points[i];
+      context.beginPath(); context.moveTo(x(previous.t), y(previous.p)); context.lineTo(x(point.t), y(point.p));
+      context.strokeStyle = (Number(previous.p) + Number(point.p)) / 2 <= average ? '#51e39a' : '#ff6e76';
+      context.lineWidth = 2.4; context.lineJoin = 'round'; context.lineCap = 'round'; context.stroke();
+    }
+    const markerStep = Math.max(1, Math.ceil(points.length / 52));
+    points.forEach((point, index) => {
+      if (index % markerStep && index !== points.length - 1) return;
+      context.beginPath(); context.arc(x(point.t), y(point.p), index === points.length - 1 ? 3.8 : 2, 0, Math.PI * 2);
+      context.fillStyle = index === points.length - 1 ? lineColor : '#d8e6f7'; context.fill();
+      if (index === points.length - 1) { context.beginPath(); context.arc(x(point.t), y(point.p), 7, 0, Math.PI * 2); context.strokeStyle = lineColor + '88'; context.lineWidth = 1.4; context.stroke(); }
+    });
+  } else {
+    context.beginPath(); context.arc(x(points[0].t), y(points[0].p), 4.5, 0, Math.PI * 2); context.fillStyle = lineColor; context.fill();
+  }
+  return { points, average, current: currentValue, min: dataMin, max: dataMax };
 }
 
 async function openMarketModal(itemKey, forceRefresh = false) {
@@ -179,6 +232,24 @@ async function openMarketModal(itemKey, forceRefresh = false) {
   requestAnimationFrame(() => drawPriceChart(itemKey, modalHistory));
   const average = points.length ? points.reduce((sum, point) => sum + point.p, 0) / points.length : current?.price == null ? null : Number(current.price);
   const currentPrice = current?.price == null ? null : Number(current.price);
+  const stats = $('marketStats');
+  const ordered = [...points].filter(point => Number.isFinite(Number(point.p)) && Number.isFinite(Number(point.t))).sort((a, b) => a.t - b.t);
+  const historyValues = ordered.map(point => Number(point.p));
+  const firstPrice = historyValues[0] ?? currentPrice, lastPrice = currentPrice ?? historyValues.at(-1);
+  const change = firstPrice != null && lastPrice != null ? lastPrice - firstPrice : null;
+  const changePercent = change != null && firstPrice ? change / firstPrice * 100 : null;
+  stats.replaceChildren(...[
+    ['Minimo 24h', historyValues.length ? format(Math.min(...historyValues)) + ' Kina' : '—', ''],
+    ['Massimo 24h', historyValues.length ? format(Math.max(...historyValues)) + ' Kina' : '—', ''],
+    ['Media 24h', average == null ? '—' : format(average) + ' Kina', ''],
+    ['Variazione', change == null ? '—' : (change > 0 ? '+' : '') + format(change) + ' Kina', change == null ? '' : change > 0 ? 'up' : change < 0 ? 'down' : 'flat', changePercent == null ? '' : (changePercent > 0 ? '+' : '') + changePercent.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + '%'],
+  ].map(([label, value, tone, detail]) => {
+    const card = document.createElement('div'); card.className = 'marketStat' + (tone ? ' ' + tone : '');
+    const title = document.createElement('small'); title.textContent = label;
+    const big = document.createElement('strong'); big.textContent = value;
+    const sub = document.createElement('span'); sub.textContent = detail || 'ultime 24 ore';
+    card.append(title, big, sub); return card;
+  }));
   const summary = $('marketSummary');
   if (average == null || currentPrice == null) { summary.className = 'marketSummary equal'; summary.textContent = 'Lo storico inizierà a raccogliere prezzi da questo aggiornamento.'; }
   else if (currentPrice > average) { summary.className = 'marketSummary above'; summary.textContent = 'Sopra la media di ' + format(currentPrice - average) + ' Kina: può convenire attendere un prezzo più basso.'; }
