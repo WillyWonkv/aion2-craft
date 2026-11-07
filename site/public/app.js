@@ -848,9 +848,17 @@ function renderDetail() {
   const title = document.createElement('h2'); title.className = 'itemGrade' + gradeClass(recipe.out); title.textContent = nameOf(recipe.out);
   titleRow.append(iconOf(recipe.out, 'large'), title);
   if (recipe.type !== 'transfer') {
-    const marketButton = document.createElement('button'); marketButton.className = 'marketButton'; marketButton.type = 'button'; marketButton.textContent = 'Prezzo mercato'; marketButton.setAttribute('aria-label', 'Grafico prezzo mercato di ' + nameOf(recipe.combo || recipe.out));
-    marketButton.addEventListener('click', () => openMarketModal(String(recipe.combo || recipe.out)));
-    titleRow.append(marketButton);
+    const marketActions = document.createElement('div'); marketActions.className = 'marketActions';
+    const targets = recipe.combo && recipe.successChance != null && !recipe.safe
+      ? [[recipe.out, 'Mercato Lv. 63'], [recipe.combo, 'Mercato combo Lv. 70']]
+      : [[recipe.combo || recipe.out, 'Prezzo mercato']];
+    for (const [key, label] of targets) {
+      const marketButton = document.createElement('button'); marketButton.className = 'marketButton'; marketButton.type = 'button'; marketButton.textContent = label;
+      marketButton.setAttribute('aria-label', 'Grafico ' + label + ' di ' + nameOf(key));
+      marketButton.addEventListener('click', () => openMarketModal(String(key)));
+      marketActions.append(marketButton);
+    }
+    titleRow.append(marketActions);
   }
   const meta = document.createElement('div'); meta.className = 'detailMeta muted';
   meta.textContent = (recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' › ' + (professionLabels[recipe.p] || recipe.p || 'Crafting') + ' › ' + (categoryLabels[categoryOf(recipe)] || categoryOf(recipe)) + ' · ' + masteryLabel(recipe.ml) + ' · ' + (recipe.outq || 1) + ' per tentativo' + (recipe.type === 'transfer' ? ' · Passaggio ' + transferStageNumber(recipe) + '/5 · ' + transferLevelLabel(recipe) : recipe.safe ? ' · risultato sicuro livello 63' : recipe.successChance != null ? ' · combo livello 70' : '');
