@@ -23,14 +23,20 @@ La cartella sorgente nello ZIP serve per modificare il progetto. Per usarla:
 
 Non serve `npm install`. Il server ascolta solo sul tuo PC (`127.0.0.1`); per leggere i prezzi serve Internet. Le ricette Global sono incluse nel progetto. Per fermarlo, premi `Ctrl+C` nel terminale.
 
+## Struttura del repository
+
+- `public/` e `functions/`: sorgenti pubblicate da Cloudflare Pages.
+- `price-collector/` nella radice: Worker pianificato ogni 5 minuti; i passaggi per collegare D1 e pubblicarlo sono in `../price-collector/README.md`.
+- `Aion2-Craft.cmd` e gli script nella radice: avvio e generazione del file singolo locale.
+
 ## Pubblicazione facoltativa su Cloudflare Pages
 
-1. Crea un repository GitHub e carica **il contenuto di questa cartella** nella radice del repository.
+1. Crea un repository GitHub e carica **il contenuto del repository**.
 2. In Cloudflare apri **Workers & Pages → Create application → Pages → Import an existing Git repository** e collega il repository.
-3. Imposta **Build command** su `exit 0` e **Build output directory** su `public`.
+3. Imposta **Root directory** su `site`, **Build command** su `exit 0` e **Build output directory** su `public`.
 4. Pubblica. Cloudflare creerà un URL `*.pages.dev` che puoi condividere.
 
-La cartella `functions/api` deve restare alla radice del repository, accanto a `public`. Non basta caricare lo ZIP tramite Direct Upload: Cloudflare non installa le Pages Functions con quel metodo.
+La cartella `functions/api` deve restare accanto a `public` dentro `site`. Per usare lo storico condiviso, aggiungi al progetto Pages il binding D1 `PRICE_HISTORY` indicato nel README del collector. Non basta caricare lo ZIP tramite Direct Upload: Cloudflare non installa le Pages Functions con quel metodo.
 
 Se vuoi condividerlo pubblicamente in futuro, questa opzione resta disponibile.
 

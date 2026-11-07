@@ -1,0 +1,20 @@
+{
+  "name": "aion2-price-collector",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-07",
+  "workers_dev": true,
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
+  "d1_databases": [
+    {
+      "binding": "PRICE_HISTORY",
+      "database_name": "aion2-price-history",
+      "database_id": "SET_D1_DATABASE_ID_HERE"
+    }
+  ],
+  "vars": {
+    "SERVER_IDS": "11303",
+    "RETENTION_DAYS": "30"
+  }
+}

@@ -22,12 +22,15 @@ $html = @'
     .brand{display:flex;align-items:center;gap:12px}.mark{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#80cfff,#8169f8);display:grid;place-items:center;color:#101524;font-weight:900;font-size:22px;box-shadow:0 8px 28px #378bda44}.brand strong{display:block;font-size:18px}.brand small{color:#a9b6ca}
     .badge{border:1px solid #35516a;color:#96dfef;background:#132938;border-radius:999px;padding:8px 12px;font-size:13px}
     h1{font-size:clamp(28px,4vw,48px);letter-spacing:-.04em;line-height:1.08;margin:0 0 10px}p{line-height:1.5}.intro{color:#aebbd0;margin:0 0 26px;max-width:720px}
-    .toolbar{display:grid;grid-template-columns:1fr 1fr 1.3fr auto;gap:12px;background:#161f30;border:1px solid #2a3950;border-radius:20px;padding:16px;margin-bottom:22px;align-items:end}
+    .toolbar{display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:12px;background:#161f30;border:1px solid #2a3950;border-radius:20px;padding:16px;margin-bottom:22px;align-items:end}
     label{display:block;color:#aebbd0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px}
     select,input{width:100%;background:#0f1726;color:#eef2fc;border:1px solid #35445a;border-radius:11px;padding:11px 12px;outline:none}
     select:focus,input:focus{border-color:#80cfff;box-shadow:0 0 0 3px #80cfff22}button.primary{border:0;background:#8bcfff;color:#0c1a2c;font-weight:800;border-radius:11px;padding:12px 18px;white-space:nowrap}button.primary:hover{background:#b4e0ff}
     .status{min-height:24px;color:#aebbd0;font-size:13px;margin-bottom:18px}.status.error{color:#ffb1ab}.status.good{color:#9de0c1}
-    .quickPrices{margin:0 0 20px}.quickPrices h2{font-size:15px;margin:0 0 10px;color:#dce7f7}.quickPriceList{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:9px}.quickPrice{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:9px;min-width:0;padding:10px 12px;border:1px solid #2c4058;border-radius:13px;background:#121d2d}.quickPrice .itemIcon{width:32px;height:32px}.quickPriceName{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#b8c7da;font-size:11px}.quickPrice strong{display:block;margin-top:2px;font-size:15px;color:#f4f7ff}.quickPrice small{display:block;margin-top:2px;color:#8094ac;font-size:10px}
+    .buyFinishedAdvice{margin:0 0 18px;padding:13px 15px;border:1px solid #9a6940;border-radius:13px;background:#2b241a;color:#ffd8a8;font-weight:700;font-size:13px;line-height:1.45}
+    .refreshDock{position:fixed;top:28px;right:28px;z-index:20}.refreshDock button{position:relative;display:grid;place-items:center;width:44px;height:44px;border:1px solid #85cfff;background:#142a40;color:#eaf6ff;border-radius:50%;padding:0;box-shadow:0 8px 28px #0008}.refreshDock button:hover:not(:disabled){background:#1c3a56}.refreshDock button:disabled{cursor:wait;opacity:.75}.refreshDock .refreshIcon{display:block;font-size:23px;line-height:1;text-align:center;transform:translateY(-1px)}.refreshDock small{position:absolute;right:-4px;bottom:-5px;min-width:20px;padding:2px 4px;border:1px solid #29445d;border-radius:999px;background:#0d1320;color:#a8c8e2;font-size:9px;text-align:center}
+    .quickPrices{margin:0 0 20px}.quickPrices h2{font-size:15px;margin:0 0 10px;color:#dce7f7}.quickPriceList{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:9px}.quickPrice{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:9px;min-width:0;padding:10px 12px;border:1px solid #2c4058;border-radius:13px;background:#121d2d;cursor:pointer}.quickPrice:hover{border-color:#73c8f4;background:#192a3e}.quickPrice .itemIcon{width:32px;height:32px}.quickPriceName{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#b8c7da;font-size:11px}.quickPrice strong{display:block;margin-top:2px;font-size:15px;color:#f4f7ff}.quickPrice small{display:block;margin-top:2px;color:#8094ac;font-size:10px}
+    .marketButton{margin-left:auto;flex:none;border:1px solid #35516a;background:#142a40;color:#d8edff;border-radius:999px;padding:9px 12px;font-size:11px;font-weight:800}.marketButton:hover{border-color:#85cfff;background:#1c3a56}.marketModal{width:min(760px,calc(100vw - 28px));max-width:none;max-height:min(86vh,820px);padding:0;border:1px solid #3a526c;border-radius:18px;background:#111b2a;color:#eef2fc;box-shadow:0 25px 80px #000b}.marketModal::backdrop{background:#050a12cc;backdrop-filter:blur(4px)}.marketModalHead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 20px;border-bottom:1px solid #2a3950}.marketModalHead h2{margin:0;font-size:18px}.marketModalHead button{border:1px solid #3a4e66;background:#1a2739;color:#d8e5f5;border-radius:9px;padding:6px 11px}.marketModalBody{padding:18px 20px}.marketCurrent{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}.marketCurrent strong{font-size:24px}.marketCurrent small,.marketExplain{color:#9eafc6;font-size:12px}.marketChart{display:block;width:100%;height:300px;border:1px solid #2a3950;border-radius:12px;background:#0d1522}.marketSummary{margin-top:12px;padding:12px 14px;border-radius:11px;font-weight:700;font-size:13px}.marketSummary.above{border:1px solid #764b4b;background:#291b20;color:#ffaaa6}.marketSummary.below{border:1px solid #2f7050;background:#10271f;color:#7ce6a9}.marketSummary.equal{border:1px solid #40546b;background:#172437;color:#c6d7eb}.marketExplain{margin:9px 0 0;line-height:1.5}
     .recommendations{margin:0 0 22px}.recommendations h2{font-size:17px;margin:0 0 4px}.recommendations>p{color:#8fa2ba;font-size:12px;margin:0 0 11px}.recommendationList{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:10px}.recommendationCard{position:relative;min-width:0;padding:13px;text-align:left;color:#eef2fc;border:1px solid #31506a;border-radius:15px;background:linear-gradient(145deg,#15263a,#101a29);box-shadow:inset 0 1px #ffffff08}.recommendationCard:hover{border-color:#73c8f4;background:linear-gradient(145deg,#1a3048,#122238);transform:translateY(-1px)}.recommendationHead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:9px}.recommendationHead .itemIcon{width:38px;height:38px}.recommendationText{min-width:0}.recommendationText strong,.recommendationText small{display:block}.recommendationText strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.recommendationText small{margin-top:3px;color:#8fa2ba;font-size:10px}.recommendationRank{align-self:start;border:1px solid #42627e;border-radius:999px;padding:3px 6px;color:#9bcdea;background:#102235;font-size:10px}.recommendationGainLabel{display:block;margin-top:12px;color:#8fa2ba;font-size:10px;text-transform:uppercase;letter-spacing:.05em}.recommendationGain{display:block;margin-top:2px;color:#7ce6a9;font-size:20px}.recommendationDetails{display:block;margin-top:4px;color:#9babc0;font-size:10px;line-height:1.35}.recommendationEmpty{grid-column:1/-1;margin:0;padding:14px;border:1px dashed #34465d;border-radius:13px;color:#8fa2ba;background:#111b2a}
     .layout{display:grid;grid-template-columns:minmax(290px,390px) minmax(0,1fr);gap:20px;align-items:start}.panel{background:#161f30;border:1px solid #2a3950;border-radius:20px;overflow:hidden}.panelHead{padding:20px 20px 14px;border-bottom:1px solid #2a3950}.panelHead h2{font-size:19px;margin:0 0 12px}.panelHead .search{margin-bottom:12px}.panelHead .filters{display:flex;gap:7px;flex-wrap:wrap}.chip{border:1px solid #3a4b63;background:#1a2739;color:#cbd6e7;padding:7px 10px;border-radius:999px;font-size:12px}.chip.active{background:#83cfff;color:#0b192a;border-color:#83cfff;font-weight:800}
     .menu{display:flex;gap:8px;overflow-x:auto;padding:4px 0 15px;scrollbar-width:thin}.menu button{border:1px solid #34465d;background:#172437;color:#c4d3e7;border-radius:12px;padding:10px 13px;white-space:nowrap;text-align:left}.menu button.active{background:#254565;border-color:#79c7f8;color:#fff}.menu button strong{display:block;font-size:13px}.menu button small{display:block;color:#9fb2c9;font-size:11px;margin-top:3px}.categoryMenu{display:flex;gap:7px;overflow-x:auto;padding:2px 0 5px;scrollbar-width:thin}.categoryMenu button{border:1px solid #3a4b63;background:#1a2739;color:#cbd6e7;padding:7px 10px;border-radius:999px;font-size:12px;white-space:nowrap}.categoryMenu button.active{background:#83cfff;color:#0b192a;border-color:#83cfff;font-weight:800}
@@ -35,28 +38,29 @@ $html = @'
     .detail{padding:24px}.detail h2{font-size:25px;letter-spacing:-.025em;margin:0 0 9px}.muted{color:#9eafc6}.detailMeta{font-size:13px;margin-bottom:22px}.numbers{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin:20px 0}.number{background:#101b2a;border:1px solid #2c4058;border-radius:14px;padding:15px}.number span{display:block;color:#9eafc6;font-size:12px}.number strong{display:block;font-size:23px;margin-top:6px}.number small{display:block;color:#9eafc6;margin-top:5px}.number.accent strong{color:#9bdcff}.number.warn strong{color:#ffc8a6}.number.wide,.number.profitResult{grid-column:1/-1}.number.profitResult.gain,.number.outcomeProfit.gain{border-color:#2f7050;background:#10271f}.number.profitResult.gain strong,.number.outcomeProfit.gain strong{color:#7ce6a9}.number.profitResult.loss,.number.outcomeProfit.loss{border-color:#764b4b;background:#291b20}.number.profitResult.loss strong,.number.outcomeProfit.loss strong{color:#ff9e9e}.tableScroll{overflow-x:auto}.tableScroll table{min-width:720px}.craftBreakdown{margin-top:7px}.craftBreakdown summary{cursor:pointer;color:#9bdcff;font-size:12px}.craftBreakdown ul{padding-left:17px;margin:7px 0;color:#b6c6da;font-size:12px;line-height:1.5}.craftBreakdown li{margin:3px 0}.fallbackNote{color:#ffc8a6;font-size:11px;margin-top:5px}.missingPrices{margin-top:20px;padding:15px;border:1px solid #6c4d45;border-radius:13px;background:#2b252a}.missingPrices h3{margin:0 0 7px}.missingPriceRow{display:flex;align-items:center;gap:10px;margin-top:9px}.missingPriceRow label{margin:0;flex:1;text-transform:none;letter-spacing:0}.missingPriceRow input{width:130px}
     .controls{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:15px}.controls>div{width:150px}.controls>.materialMode{width:270px;margin:0;padding:0;border:0}.controls .note{color:#9eafc6;font-size:12px;max-width:520px}.materialMode legend{color:#aebbd0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px}.sourceChoices{display:grid;gap:7px}.sourceChoice{display:flex;align-items:center;gap:10px;margin:0;padding:10px 12px;border:1px solid #35445a;border-radius:11px;background:#0f1726;color:#eef2fc;text-transform:none;letter-spacing:0;cursor:pointer}.sourceChoice:has(input:checked){border-color:#80cfff;background:#172b42;box-shadow:0 0 0 2px #80cfff18}.sourceChoice input{width:17px;height:17px;margin:0;accent-color:#80cfff;box-shadow:none}.sourceChoice span{min-width:0}.sourceChoice strong,.sourceChoice small{display:block}.sourceChoice strong{font-size:13px}.sourceChoice small{margin-top:2px;color:#9eafc6;font-size:11px;font-weight:400;line-height:1.25}
     table{border-collapse:collapse;width:100%}th,td{padding:11px 8px;border-bottom:1px solid #2b3a4e;text-align:left;font-size:13px}th{color:#9eafc6;font-size:11px;text-transform:uppercase;letter-spacing:.06em}td:last-child,th:last-child{text-align:right}.material{font-weight:650}.priceInput{width:125px;padding:7px 9px;text-align:right}.sourceTag{font-size:11px;color:#9eafc6}.missing{color:#ffc8a6}.foot{font-size:12px;color:#8497b0;margin-top:25px}.foot a{color:#9bdcff}
-    @media(max-width:850px){.toolbar{grid-template-columns:1fr 1fr}.layout{grid-template-columns:1fr}.numbers{grid-template-columns:1fr 1fr}.shell{padding:16px}}@media(max-width:520px){.toolbar{grid-template-columns:1fr}.top{align-items:flex-start}.badge{display:none}.numbers{grid-template-columns:1fr}.detail{padding:18px}.priceInput{width:90px}th,td{padding:9px 4px}}
+    @media(max-width:850px){.toolbar{grid-template-columns:1fr 1fr}.layout{grid-template-columns:1fr}.numbers{grid-template-columns:1fr 1fr}.shell{padding:16px}}@media(max-width:520px){.toolbar{grid-template-columns:1fr}.top{align-items:flex-start}.badge{display:none}.numbers{grid-template-columns:1fr}.detail{padding:18px}.priceInput{width:90px}th,td{padding:9px 4px}.refreshDock{top:20px;right:18px}.marketModalHead,.marketModalBody{padding:14px}.marketChart{height:240px}.marketButton{padding:7px 9px;font-size:10px}}
   </style>
 </head>
 <body>
   <div class="shell">
     <header class="top"><div class="brand"><div class="mark">A</div><div><strong>Aion 2 Craft</strong><small>Global · prezzi per server · costi in Kina</small></div></div><div class="badge">Ricette Global</div></header>
     <h1>Quanto costa davvero craftarlo?</h1>
-    <p class="intro">Scegli regione e server Global, cerca una ricetta e confronta il costo dei materiali con il prezzo più basso pubblicato sul mercato. I prezzi si caricano automaticamente.</p>
+    <p class="intro">1. Scegli regione e server. 2. Cerca un oggetto o seleziona una professione. 3. Nel dettaglio confronta il costo per craftare con il ricavo netto dalla vendita.</p>
     <section class="toolbar" aria-label="Impostazioni mercato">
       <div><label for="region">Regione</label><select id="region"></select></div>
       <div><label for="server">Server</label><select id="server"></select></div>
       <div><label for="search">Cerca ricetta</label><input id="search" type="search" placeholder="Es. Orichalcum, Ruby Necklace…"></div>
-      <button class="primary" id="reload" type="button">↻ Aggiorna prezzi</button>
     </section>
+    <aside class="refreshDock"><button id="reload" type="button" aria-label="Aggiorna prezzi" title="Aggiorna prezzi"><span class="refreshIcon" aria-hidden="true">↻</span><small id="reloadCooldown" hidden></small></button></aside>
+    <dialog id="marketModal" class="marketModal" aria-labelledby="marketModalTitle"><div class="marketModalHead"><h2 id="marketModalTitle">Storico prezzo</h2><button id="closeMarketModal" type="button" aria-label="Chiudi">Chiudi</button></div><div class="marketModalBody"><div class="marketCurrent"><strong id="marketModalCurrent">—</strong><small id="marketModalCount">Nessuna rilevazione</small></div><canvas id="marketChart" class="marketChart" aria-label="Grafico dello storico prezzi"></canvas><div id="marketSummary" class="marketSummary equal"></div><p class="marketExplain">La linea centrale è la media delle rilevazioni salvate in questo browser. Rosso: prezzo corrente sopra la media, può convenire attendere. Verde: sotto la media, prezzo relativamente più conveniente. È un confronto storico, non una previsione.</p></div></dialog>
     <div id="status" class="status" role="status" aria-live="polite">Caricamento ricette e server…</div>
-    <section class="recommendations" aria-labelledby="recommendationsTitle"><h2 id="recommendationsTitle">Craft consigliati</h2><p>Armi e armature ordinate per guadagno netto sul server, dopo la tassa di vendita del 10%. Tariffa di inserzione esclusa.</p><div id="recommendationList" class="recommendationList"></div></section>
+    <section class="recommendations" aria-labelledby="recommendationsTitle"><h2 id="recommendationsTitle">Craft consigliati</h2><p>Confronta costo dei materiali e ricavo dopo la tassa del 10%. Se il dettaglio mostra una perdita, conviene valutare l’acquisto dell’oggetto finito.</p><div id="recommendationList" class="recommendationList"></div></section>
     <section class="quickPrices" aria-labelledby="quickPricesTitle"><h2 id="quickPricesTitle">Prezzi rapidi del server</h2><div id="quickPriceList" class="quickPriceList"></div></section>
     <nav id="modes" class="modeMenu" aria-label="Tipo di crafting"></nav>
     <nav id="professions" class="menu" aria-label="Professioni di crafting"></nav>
     <main class="layout">
-      <section class="panel"><div class="panelHead"><h2>Ricette <span id="count" class="muted"></span></h2><nav id="categories" class="categoryMenu" aria-label="Categorie di ricette"></nav></div><div id="results" class="results"></div></section>
-      <section class="panel"><div id="detail" class="detail"><h2>Seleziona una ricetta</h2><p class="muted">Il dettaglio dei materiali apparirà qui.</p></div></section>
+      <section class="panel"><div class="panelHead"><h2>Ricette <span id="count" class="muted"></span></h2><p class="muted" style="font-size:12px;margin:0 0 12px">Scegli prima il tipo di crafting e la professione, poi filtra per categoria o cerca il nome.</p><nav id="categories" class="categoryMenu" aria-label="Categorie di ricette"></nav></div><div id="results" class="results"></div></section>
+      <section class="panel"><div id="detail" class="detail"><h2>Seleziona una ricetta</h2><p class="muted">Qui trovi i materiali, il costo totale e il confronto con il mercato. “Craftato” sceglie il metodo meno caro per i materiali; “Market” li compra tutti.</p></div></section>
     </main>
     <p class="foot">Fonti community: <a href="https://aion2.exchange/" target="_blank" rel="noopener">Aion2Market</a> per i prezzi, <a href="https://github.com/xtopolis/aion2-static" target="_blank" rel="noopener">xtopolis/aion2-static</a> per le ricette del client Global (snapshot 21 settembre 2026). Le patch successive possono aggiungere ricette. I prezzi sono annunci, non vendite garantite; controlla il mercato in gioco prima di spendere. Sito non affiliato a NC.</p>
   </div>
@@ -70,13 +74,18 @@ import { createCostModel, GLOBAL_VENDOR_PRICES } from './cost-model.js';
 
 const $ = id => document.getElementById(id);
 const state = { graph: null, servers: [], prices: new Map(), region: 'EU', server: 11303, mode: 'crafting', profession: 'blacksmithing', category: 'all', selected: null, materialMode: 'optimize', fetchedAt: null };
+let modalHistory = null;
 const format = value => value == null || !Number.isFinite(value) ? '—' : Math.round(value).toLocaleString('it-IT');
 const formatAttempts = value => Number(value).toLocaleString('it-IT', { maximumFractionDigits: 2 });
 const formatPercent = value => Number(value).toLocaleString('it-IT', { maximumFractionDigits: 2 });
 const MAX_CRAFT_SUCCESS = 0.9464;
 const MAX_COMBO_SUCCESS = 0.23 / (MAX_CRAFT_SUCCESS * 0.25);
 const MARKET_TAX_RATE = 0.10;
+const MANUAL_REFRESH_COOLDOWN_MS = 20_000;
+const AUTO_REFRESH_INTERVAL_MS = 5 * 60_000;
 const netSale = value => value == null ? null : Number(value) * (1 - MARKET_TAX_RATE);
+let manualRefreshAllowedAt = 0;
+let refreshCountdownTimer = null;
 const QUICK_PRICE_ITEMS = [
   '610511013', '610511015', '610511014',
   '610610013', '610610014', '610610015', '610610016',
@@ -128,14 +137,104 @@ function renderQuickPrices() {
   if (!list || !state.graph) return;
   list.replaceChildren(...QUICK_PRICE_ITEMS.map(key => {
     const market = state.prices.get(key);
-    const card = document.createElement('article'); card.className = 'quickPrice';
+    const card = document.createElement('button'); card.type = 'button'; card.className = 'quickPrice'; card.setAttribute('aria-label', 'Mostra lo storico prezzo di ' + nameOf(key));
     const text = document.createElement('div');
     const name = document.createElement('span'); name.className = 'quickPriceName itemGrade' + gradeClass(key); name.textContent = nameOf(key); name.title = name.textContent;
     const price = document.createElement('strong'); price.textContent = market?.price == null ? '—' : format(Number(market.price)) + ' Kina';
     const listings = document.createElement('small'); listings.textContent = market ? (market.listings || 0) + ' annunci' : 'Prezzo non disponibile';
     text.append(name, price, listings); card.append(iconOf(key), text);
+    card.addEventListener('click', () => openMarketModal(key));
     return card;
   }));
+}
+
+const HISTORY_LIMIT = 90 * 24 * 60 * 60 * 1000;
+function priceHistoryKey(serverId) { return 'aion2craft:priceHistory:' + serverId; }
+function savePriceHistory(prices, timestamp) {
+  const key = priceHistoryKey(state.server);
+  let history = {};
+  try { history = JSON.parse(localStorage.getItem(key) || '{}'); } catch { history = {}; }
+  for (const [itemKey, item] of prices) {
+    if (item?.price == null || !Number.isFinite(Number(item.price))) continue;
+    const points = Array.isArray(history[itemKey]) ? history[itemKey] : [];
+    if (points.at(-1)?.t !== timestamp) points.push({ t: timestamp, p: Number(item.price) });
+    history[itemKey] = points.filter(point => timestamp - point.t <= HISTORY_LIMIT).slice(-1440);
+  }
+  localStorage.setItem(key, JSON.stringify(history));
+}
+
+function getPriceHistory(itemKey) {
+  try {
+    const history = JSON.parse(localStorage.getItem(priceHistoryKey(state.server)) || '{}');
+    return Array.isArray(history[itemKey]) ? history[itemKey].filter(point => Number.isFinite(point.p) && Number.isFinite(point.t)) : [];
+  } catch { return []; }
+}
+
+function drawPriceChart(itemKey, historyOverride = null) {
+  const canvas = $('marketChart');
+  const context = canvas.getContext('2d');
+  const bounds = canvas.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.round(bounds.width * ratio));
+  canvas.height = Math.max(1, Math.round(bounds.height * ratio));
+  context.scale(ratio, ratio);
+  const width = bounds.width, height = bounds.height;
+  const pad = { l: 62, r: 18, t: 22, b: 36 };
+  const plotW = width - pad.l - pad.r, plotH = height - pad.t - pad.b;
+  const points = historyOverride || getPriceHistory(itemKey);
+  const current = state.prices.get(itemKey);
+  if (current?.price != null && (!points.length || points.at(-1).p !== Number(current.price))) points.push({ t: Date.now(), p: Number(current.price) });
+  const values = points.map(point => point.p);
+  if (!values.length) {
+    context.fillStyle = '#9eafc6'; context.font = '13px system-ui'; context.textAlign = 'center'; context.fillText('Storico vuoto: aggiorna i prezzi per iniziare a raccogliere i punti.', width / 2, height / 2);
+    return { points, average: null, current: current?.price == null ? null : Number(current.price) };
+  }
+  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const currentValue = current?.price == null ? values.at(-1) : Number(current.price);
+  const min = Math.min(...values, average, currentValue), max = Math.max(...values, average, currentValue);
+  const span = Math.max(1, max - min), low = min - span * 0.12, high = max + span * 0.12;
+  const y = value => pad.t + (high - value) / (high - low) * plotH;
+  context.strokeStyle = '#26394f'; context.lineWidth = 1; context.fillStyle = '#91a5bd'; context.font = '10px system-ui'; context.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) { const val = high - (high - low) * i / 4, yy = pad.t + plotH * i / 4; context.beginPath(); context.moveTo(pad.l, yy); context.lineTo(width - pad.r, yy); context.stroke(); context.fillText(format(val), pad.l - 8, yy + 3); }
+  if (points.length > 1) {
+    const start = points[0].t, end = points.at(-1).t, range = Math.max(1, end - start);
+    context.beginPath();
+    points.forEach((point, index) => { const x = pad.l + (points.length === 1 ? plotW / 2 : (point.t - start) / range * plotW); if (index === 0) context.moveTo(x, y(point.p)); else context.lineTo(x, y(point.p)); });
+    context.strokeStyle = currentValue > average ? '#ff7777' : '#64e49a'; context.lineWidth = 2.5; context.stroke();
+  } else {
+    context.fillStyle = '#91a5bd'; context.textAlign = 'center'; context.fillText('Serve almeno un altro aggiornamento per tracciare la linea del prezzo.', width / 2, height / 2);
+  }
+  context.setLineDash([6, 5]); context.beginPath(); context.moveTo(pad.l, y(average)); context.lineTo(width - pad.r, y(average)); context.strokeStyle = '#e5edf7'; context.lineWidth = 1.5; context.stroke(); context.setLineDash([]);
+  context.textAlign = 'left'; context.fillStyle = '#dce7f7'; context.fillText('Media ' + format(average), pad.l + 6, Math.max(12, y(average) - 6));
+  if (points.length > 1) { context.textAlign = 'left'; context.fillStyle = '#91a5bd'; context.fillText(new Date(points[0].t).toLocaleDateString('it-IT'), pad.l, height - 12); context.textAlign = 'right'; context.fillText(new Date(points.at(-1).t).toLocaleString('it-IT', { hour: '2-digit', minute: '2-digit' }), width - pad.r, height - 12); }
+  return { points, average, current: currentValue };
+}
+
+async function openMarketModal(itemKey) {
+  const dialog = $('marketModal');
+  dialog.dataset.itemKey = String(itemKey);
+  $('marketModalTitle').textContent = 'Prezzo mercato · ' + nameOf(itemKey);
+  const current = state.prices.get(itemKey);
+  $('marketModalCurrent').textContent = current?.price == null ? 'Prezzo non disponibile' : format(Number(current.price)) + ' Kina';
+  if (!dialog.open) dialog.showModal();
+  let points = getPriceHistory(itemKey);
+  try {
+    const response = await fetch('/api/history?server=' + state.server + '&item=' + encodeURIComponent(itemKey), { cache: 'no-cache' });
+    const shared = await response.json();
+    if (response.ok && Array.isArray(shared.points) && shared.points.length) points = shared.points;
+  } catch { /* Local browser history remains available when the collector is not configured. */ }
+  if (dialog.dataset.itemKey !== String(itemKey)) return;
+  modalHistory = points;
+  $('marketModalCount').textContent = current ? (current.listings || 0) + ' annunci · ' + points.length + ' rilevazioni salvate' : points.length + ' rilevazioni salvate';
+  requestAnimationFrame(() => drawPriceChart(itemKey, modalHistory));
+  const average = points.length ? points.reduce((sum, point) => sum + point.p, 0) / points.length : current?.price == null ? null : Number(current.price);
+  const currentPrice = current?.price == null ? null : Number(current.price);
+  const summary = $('marketSummary');
+  if (average == null || currentPrice == null) { summary.className = 'marketSummary equal'; summary.textContent = 'Lo storico inizierà a raccogliere prezzi da questo aggiornamento.'; }
+  else if (currentPrice > average) { summary.className = 'marketSummary above'; summary.textContent = 'Sopra la media di ' + format(currentPrice - average) + ' Kina: può convenire attendere un prezzo più basso.'; }
+  else if (currentPrice < average) { summary.className = 'marketSummary below'; summary.textContent = 'Sotto la media di ' + format(average - currentPrice) + ' Kina: prezzo relativamente più conveniente.'; }
+  else { summary.className = 'marketSummary equal'; summary.textContent = 'Prezzo in linea con la media dello storico.'; }
+  if (points.length < 2) { summary.textContent += ' Il grafico diventerà significativo dopo altri refresh.'; }
 }
 
 function renderRecommendations() {
@@ -427,6 +526,9 @@ function renderDetail() {
   const titleRow = document.createElement('div'); titleRow.className = 'titleRow';
   const title = document.createElement('h2'); title.className = 'itemGrade' + gradeClass(recipe.out); title.textContent = nameOf(recipe.out);
   titleRow.append(iconOf(recipe.out, 'large'), title);
+  const marketButton = document.createElement('button'); marketButton.className = 'marketButton'; marketButton.type = 'button'; marketButton.textContent = 'Prezzo mercato'; marketButton.setAttribute('aria-label', 'Grafico prezzo mercato di ' + nameOf(recipe.combo || recipe.out));
+  marketButton.addEventListener('click', () => openMarketModal(String(recipe.combo || recipe.out)));
+  titleRow.append(marketButton);
   const meta = document.createElement('div'); meta.className = 'detailMeta muted';
   meta.textContent = (recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' › ' + (professionLabels[recipe.p] || recipe.p || 'Crafting') + ' › ' + (categoryLabels[categoryOf(recipe)] || categoryOf(recipe)) + ' · ' + masteryLabel(recipe.ml) + ' · ' + (recipe.outq || 1) + ' per tentativo' + (recipe.safe ? ' · risultato sicuro livello 63' : recipe.successChance != null ? ' · combo livello 70' : '');
   const control = document.createElement('div'); control.className = 'controls';
@@ -452,7 +554,7 @@ function renderDetail() {
     text.append(strong, small); choice.append(radio, text); sourceChoices.append(choice);
   }
   modeWrap.append(modeLabel, sourceChoices); control.append(modeWrap);
-  const note = document.createElement('p'); note.className = 'note'; note.textContent = recipe.safe ? 'La quantità indica quanti craft vuoi eseguire. Questa ricetta riesce sempre, produce l’arma base vincolata e non può fare combo. La tariffa in Kina non è inclusa.' : recipe.successChance != null ? 'La quantità indica quanti craft vuoi eseguire. Le combo attese usano il 25%: per esempio, 20 craft attivano in media 5 combo. Per i True Dragon il calcolo usa automaticamente la probabilità massima della professione al livello 50.' : 'La quantità indica quanti craft vuoi eseguire. Le combo attese sono una media: con il 25%, 20 craft corrispondono a 5 combo. Per i materiali, Craftato confronta mercato, craft e trasformazione 1:1 dall’Odyle.';
+  const note = document.createElement('p'); note.className = 'note'; note.textContent = recipe.safe ? 'Quantità = numero di craft. Questa ricetta riesce sempre, produce l’arma base vincolata e non può fare combo. La tariffa in Kina non è inclusa.' : recipe.successChance != null ? 'Quantità = numero di craft, non pezzi garantiti. Le combo usano il 25% e possono fallire: per esempio, 20 craft attivano in media 5 combo. Per True Dragon il calcolo usa la probabilità massima della professione al livello 50.' : 'Quantità = numero di craft. Le combo sono una media: al 25%, 20 craft corrispondono a 5 attivazioni. “Craftato” sceglie il metodo meno caro tra mercato, craft e trasformazione 1:1 dall’Odyle; “Market” compra tutti i materiali.';
   control.append(note);
   pane.append(titleRow, meta, control);
 
@@ -499,7 +601,7 @@ function renderDetail() {
     box(isLevel70Combo ? 'Costo comprando / 1 craft' : 'Costo comprando / 1 ' + resultLabel, shownMarketCost == null ? 'Prezzo mancante' : format(shownMarketCost) + ' Kina', marketAttempt.missing.length ? missingBuyNote : 'Totale materiali per ' + craftCount + ' craft: ' + format(marketAttempt.cost * craftCount) + ' Kina', shownMarketCost == null ? 'warn' : ''),
     box(isLevel70Combo ? 'Costo craftato / 1 craft' : 'Costo craftato / 1 ' + resultLabel, shownOwnCost == null ? 'Incompleto' : format(shownOwnCost) + ' Kina', ownAttempt.missing.length ? ownAttempt.missing.length + ' prezzi mancanti' : 'Totale per ' + craftCount + ' craft: ' + format(ownAttempt.cost * craftCount) + ' Kina' + (fallbackItems.size ? ' · alcuni pezzi comprati' : ''), shownOwnCost == null ? 'warn' : 'accent'),
   ];
-  summaryCards.push(box(recipe.combo ? 'Combo al 25% attese' : 'Oggetti attesi', recipe.combo ? formatAttempts(expectedComboActivations) : formatAttempts(expectedOutput), recipe.combo ? (recipe.successChance != null && !recipe.safe ? formatAttempts(expectedComboResults) + ' oggetti combo riusciti stimati considerando i fallimenti' : craftCount + ' craft × ' + formatPercent(comboRate * 100) + '% · valore medio') : 'Da ' + craftCount + ' craft', isLevel70Combo ? 'wide' : ''));
+  summaryCards.push(box(recipe.combo ? 'Combo al 25% attese' : 'Oggetti attesi', recipe.combo ? formatAttempts(expectedComboActivations) : formatAttempts(expectedOutput), recipe.combo ? (recipe.successChance != null && !recipe.safe ? formatAttempts(expectedComboResults) + ' combo riuscite stimate dopo i possibili fallimenti' : craftCount + ' craft × ' + formatPercent(comboRate * 100) + '% · media') : 'Risultato previsto da ' + craftCount + ' craft', isLevel70Combo ? 'wide' : ''));
   if (isLevel70Combo) {
     summaryCards.push(
       box('Prezzo mercato risultato normale Lv. 63', level63Price == null ? '—' : format(level63Price) + ' Kina', baseOutput ? (baseOutput.listings || 0) + ' annunci · prezzo minimo' : 'Nessun annuncio'),
@@ -519,6 +621,17 @@ function renderDetail() {
   }
   numbers.append(...summaryCards);
   pane.append(numbers);
+  const buyFinishedLoss = isLevel70Combo
+    ? [level63Profit, level70Profit].some(profit => profit != null && profit < 0)
+    : !recipe.bound && unitProfit != null && unitProfit < 0;
+  if (buyFinishedLoss) {
+    const advice = document.createElement('p');
+    advice.className = 'buyFinishedAdvice';
+    advice.textContent = isLevel70Combo
+      ? 'Compra il prodotto finito per i risultati in perdita: il suo prezzo di mercato, tolta la tassa del 10%, è inferiore al costo di un craft.'
+      : 'Conviene comprare l’oggetto finito: il suo prezzo di mercato, tolta la tassa del 10%, è inferiore al costo dei materiali per craftarlo.';
+    pane.append(advice);
+  }
   const heading = document.createElement('h3'); heading.textContent = recipe.transferFrom ? 'Equipaggiamento e materiali necessari' : 'Materiali necessari'; pane.append(heading);
   const table = document.createElement('table');
   const head = document.createElement('thead');
@@ -576,6 +689,7 @@ async function loadPrices(preserveOld = false) {
     const result = await getJSON('/api/prices?server=' + state.server + (preserveOld ? '&refresh=' + Date.now() : ''));
     state.prices = new Map(result.items.map(item => [String(item.item_key), { name: item.name, price: item.price, listings: item.listings }]));
     state.fetchedAt = result.retrieved_at;
+    savePriceHistory(state.prices, Date.now());
     const time = new Date(state.fetchedAt).toLocaleString('it-IT');
     status(state.prices.size + ' oggetti dal mercato · consultazione ' + time + ' · prezzi minimi degli annunci', 'good');
     renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail();
@@ -583,7 +697,39 @@ async function loadPrices(preserveOld = false) {
     if (!preserveOld) state.prices = new Map();
     status((preserveOld ? 'Aggiornamento non riuscito; restano i prezzi precedenti: ' : 'Prezzi non disponibili: ') + error.message + '. Puoi inserire prezzi manuali nelle ricette.', 'error');
     renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail();
-  } finally { $('reload').disabled = false; }
+  } finally {
+    $('reload').disabled = false;
+    updateRefreshButton();
+  }
+}
+
+function updateRefreshButton() {
+  const remaining = Math.max(0, manualRefreshAllowedAt - Date.now());
+  const button = $('reload');
+  const countdown = $('reloadCooldown');
+  if (!button || !countdown) return;
+  if (remaining > 0) {
+    button.disabled = true;
+    countdown.hidden = false;
+    countdown.textContent = Math.ceil(remaining / 1000) + ' s';
+  } else {
+    button.disabled = false;
+    countdown.hidden = true;
+    countdown.textContent = '';
+  }
+}
+
+function startManualRefreshCooldown() {
+  manualRefreshAllowedAt = Date.now() + MANUAL_REFRESH_COOLDOWN_MS;
+  if (refreshCountdownTimer) clearInterval(refreshCountdownTimer);
+  updateRefreshButton();
+  refreshCountdownTimer = setInterval(() => {
+    updateRefreshButton();
+    if (Date.now() >= manualRefreshAllowedAt) {
+      clearInterval(refreshCountdownTimer);
+      refreshCountdownTimer = null;
+    }
+  }, 250);
 }
 
 async function init() {
@@ -597,10 +743,19 @@ async function init() {
   await loadPrices();
 }
 
+$('closeMarketModal').addEventListener('click', () => $('marketModal').close());
+$('marketModal').addEventListener('click', event => { if (event.target === $('marketModal')) $('marketModal').close(); });
+window.addEventListener('resize', () => { const dialog = $('marketModal'); if (dialog.open && dialog.dataset.itemKey) drawPriceChart(dialog.dataset.itemKey, modalHistory); });
+
 $('region').addEventListener('change', () => { state.region = $('region').value; fillServers(); localStorage.setItem('aion2craft:server', String(state.server)); fillCategories(); chooseFirst(); loadPrices(); });
 $('server').addEventListener('change', () => { state.server = Number($('server').value); localStorage.setItem('aion2craft:server', String(state.server)); fillCategories(); chooseFirst(); loadPrices(); });
 $('search').addEventListener('input', chooseFirst);
-$('reload').addEventListener('click', () => loadPrices(true));
+$('reload').addEventListener('click', () => {
+  if (Date.now() < manualRefreshAllowedAt) return;
+  startManualRefreshCooldown();
+  loadPrices(true);
+});
+setInterval(() => loadPrices(true), AUTO_REFRESH_INTERVAL_MS);
 init().catch(error => status('Impossibile caricare i dati: ' + error.message + '. Riprova fra poco.', 'error'));
 
 '@

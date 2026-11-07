@@ -2,13 +2,18 @@ import { createCostModel, GLOBAL_VENDOR_PRICES } from './cost-model.js';
 
 const $ = id => document.getElementById(id);
 const state = { graph: null, servers: [], prices: new Map(), region: 'EU', server: 11303, mode: 'crafting', profession: 'blacksmithing', category: 'all', selected: null, materialMode: 'optimize', fetchedAt: null };
+let modalHistory = null;
 const format = value => value == null || !Number.isFinite(value) ? '—' : Math.round(value).toLocaleString('it-IT');
 const formatAttempts = value => Number(value).toLocaleString('it-IT', { maximumFractionDigits: 2 });
 const formatPercent = value => Number(value).toLocaleString('it-IT', { maximumFractionDigits: 2 });
 const MAX_CRAFT_SUCCESS = 0.9464;
 const MAX_COMBO_SUCCESS = 0.23 / (MAX_CRAFT_SUCCESS * 0.25);
 const MARKET_TAX_RATE = 0.10;
+const MANUAL_REFRESH_COOLDOWN_MS = 20_000;
+const AUTO_REFRESH_INTERVAL_MS = 5 * 60_000;
 const netSale = value => value == null ? null : Number(value) * (1 - MARKET_TAX_RATE);
+let manualRefreshAllowedAt = 0;
+let refreshCountdownTimer = null;
 const QUICK_PRICE_ITEMS = [
   '610511013', '610511015', '610511014',
   '610610013', '610610014', '610610015', '610610016',
@@ -60,14 +65,104 @@ function renderQuickPrices() {
   if (!list || !state.graph) return;
   list.replaceChildren(...QUICK_PRICE_ITEMS.map(key => {
     const market = state.prices.get(key);
-    const card = document.createElement('article'); card.className = 'quickPrice';
+    const card = document.createElement('button'); card.type = 'button'; card.className = 'quickPrice'; card.setAttribute('aria-label', 'Mostra lo storico prezzo di ' + nameOf(key));
     const text = document.createElement('div');
     const name = document.createElement('span'); name.className = 'quickPriceName itemGrade' + gradeClass(key); name.textContent = nameOf(key); name.title = name.textContent;
     const price = document.createElement('strong'); price.textContent = market?.price == null ? '—' : format(Number(market.price)) + ' Kina';
     const listings = document.createElement('small'); listings.textContent = market ? (market.listings || 0) + ' annunci' : 'Prezzo non disponibile';
     text.append(name, price, listings); card.append(iconOf(key), text);
+    card.addEventListener('click', () => openMarketModal(key));
     return card;
   }));
+}
+
+const HISTORY_LIMIT = 90 * 24 * 60 * 60 * 1000;
+function priceHistoryKey(serverId) { return 'aion2craft:priceHistory:' + serverId; }
+function savePriceHistory(prices, timestamp) {
+  const key = priceHistoryKey(state.server);
+  let history = {};
+  try { history = JSON.parse(localStorage.getItem(key) || '{}'); } catch { history = {}; }
+  for (const [itemKey, item] of prices) {
+    if (item?.price == null || !Number.isFinite(Number(item.price))) continue;
+    const points = Array.isArray(history[itemKey]) ? history[itemKey] : [];
+    if (points.at(-1)?.t !== timestamp) points.push({ t: timestamp, p: Number(item.price) });
+    history[itemKey] = points.filter(point => timestamp - point.t <= HISTORY_LIMIT).slice(-1440);
+  }
+  localStorage.setItem(key, JSON.stringify(history));
+}
+
+function getPriceHistory(itemKey) {
+  try {
+    const history = JSON.parse(localStorage.getItem(priceHistoryKey(state.server)) || '{}');
+    return Array.isArray(history[itemKey]) ? history[itemKey].filter(point => Number.isFinite(point.p) && Number.isFinite(point.t)) : [];
+  } catch { return []; }
+}
+
+function drawPriceChart(itemKey, historyOverride = null) {
+  const canvas = $('marketChart');
+  const context = canvas.getContext('2d');
+  const bounds = canvas.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.round(bounds.width * ratio));
+  canvas.height = Math.max(1, Math.round(bounds.height * ratio));
+  context.scale(ratio, ratio);
+  const width = bounds.width, height = bounds.height;
+  const pad = { l: 62, r: 18, t: 22, b: 36 };
+  const plotW = width - pad.l - pad.r, plotH = height - pad.t - pad.b;
+  const points = historyOverride || getPriceHistory(itemKey);
+  const current = state.prices.get(itemKey);
+  if (current?.price != null && (!points.length || points.at(-1).p !== Number(current.price))) points.push({ t: Date.now(), p: Number(current.price) });
+  const values = points.map(point => point.p);
+  if (!values.length) {
+    context.fillStyle = '#9eafc6'; context.font = '13px system-ui'; context.textAlign = 'center'; context.fillText('Storico vuoto: aggiorna i prezzi per iniziare a raccogliere i punti.', width / 2, height / 2);
+    return { points, average: null, current: current?.price == null ? null : Number(current.price) };
+  }
+  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const currentValue = current?.price == null ? values.at(-1) : Number(current.price);
+  const min = Math.min(...values, average, currentValue), max = Math.max(...values, average, currentValue);
+  const span = Math.max(1, max - min), low = min - span * 0.12, high = max + span * 0.12;
+  const y = value => pad.t + (high - value) / (high - low) * plotH;
+  context.strokeStyle = '#26394f'; context.lineWidth = 1; context.fillStyle = '#91a5bd'; context.font = '10px system-ui'; context.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) { const val = high - (high - low) * i / 4, yy = pad.t + plotH * i / 4; context.beginPath(); context.moveTo(pad.l, yy); context.lineTo(width - pad.r, yy); context.stroke(); context.fillText(format(val), pad.l - 8, yy + 3); }
+  if (points.length > 1) {
+    const start = points[0].t, end = points.at(-1).t, range = Math.max(1, end - start);
+    context.beginPath();
+    points.forEach((point, index) => { const x = pad.l + (points.length === 1 ? plotW / 2 : (point.t - start) / range * plotW); if (index === 0) context.moveTo(x, y(point.p)); else context.lineTo(x, y(point.p)); });
+    context.strokeStyle = currentValue > average ? '#ff7777' : '#64e49a'; context.lineWidth = 2.5; context.stroke();
+  } else {
+    context.fillStyle = '#91a5bd'; context.textAlign = 'center'; context.fillText('Serve almeno un altro aggiornamento per tracciare la linea del prezzo.', width / 2, height / 2);
+  }
+  context.setLineDash([6, 5]); context.beginPath(); context.moveTo(pad.l, y(average)); context.lineTo(width - pad.r, y(average)); context.strokeStyle = '#e5edf7'; context.lineWidth = 1.5; context.stroke(); context.setLineDash([]);
+  context.textAlign = 'left'; context.fillStyle = '#dce7f7'; context.fillText('Media ' + format(average), pad.l + 6, Math.max(12, y(average) - 6));
+  if (points.length > 1) { context.textAlign = 'left'; context.fillStyle = '#91a5bd'; context.fillText(new Date(points[0].t).toLocaleDateString('it-IT'), pad.l, height - 12); context.textAlign = 'right'; context.fillText(new Date(points.at(-1).t).toLocaleString('it-IT', { hour: '2-digit', minute: '2-digit' }), width - pad.r, height - 12); }
+  return { points, average, current: currentValue };
+}
+
+async function openMarketModal(itemKey) {
+  const dialog = $('marketModal');
+  dialog.dataset.itemKey = String(itemKey);
+  $('marketModalTitle').textContent = 'Prezzo mercato · ' + nameOf(itemKey);
+  const current = state.prices.get(itemKey);
+  $('marketModalCurrent').textContent = current?.price == null ? 'Prezzo non disponibile' : format(Number(current.price)) + ' Kina';
+  if (!dialog.open) dialog.showModal();
+  let points = getPriceHistory(itemKey);
+  try {
+    const response = await fetch('/api/history?server=' + state.server + '&item=' + encodeURIComponent(itemKey), { cache: 'no-cache' });
+    const shared = await response.json();
+    if (response.ok && Array.isArray(shared.points) && shared.points.length) points = shared.points;
+  } catch { /* Local browser history remains available when the collector is not configured. */ }
+  if (dialog.dataset.itemKey !== String(itemKey)) return;
+  modalHistory = points;
+  $('marketModalCount').textContent = current ? (current.listings || 0) + ' annunci · ' + points.length + ' rilevazioni salvate' : points.length + ' rilevazioni salvate';
+  requestAnimationFrame(() => drawPriceChart(itemKey, modalHistory));
+  const average = points.length ? points.reduce((sum, point) => sum + point.p, 0) / points.length : current?.price == null ? null : Number(current.price);
+  const currentPrice = current?.price == null ? null : Number(current.price);
+  const summary = $('marketSummary');
+  if (average == null || currentPrice == null) { summary.className = 'marketSummary equal'; summary.textContent = 'Lo storico inizierà a raccogliere prezzi da questo aggiornamento.'; }
+  else if (currentPrice > average) { summary.className = 'marketSummary above'; summary.textContent = 'Sopra la media di ' + format(currentPrice - average) + ' Kina: può convenire attendere un prezzo più basso.'; }
+  else if (currentPrice < average) { summary.className = 'marketSummary below'; summary.textContent = 'Sotto la media di ' + format(average - currentPrice) + ' Kina: prezzo relativamente più conveniente.'; }
+  else { summary.className = 'marketSummary equal'; summary.textContent = 'Prezzo in linea con la media dello storico.'; }
+  if (points.length < 2) { summary.textContent += ' Il grafico diventerà significativo dopo altri refresh.'; }
 }
 
 function renderRecommendations() {
@@ -359,6 +454,9 @@ function renderDetail() {
   const titleRow = document.createElement('div'); titleRow.className = 'titleRow';
   const title = document.createElement('h2'); title.className = 'itemGrade' + gradeClass(recipe.out); title.textContent = nameOf(recipe.out);
   titleRow.append(iconOf(recipe.out, 'large'), title);
+  const marketButton = document.createElement('button'); marketButton.className = 'marketButton'; marketButton.type = 'button'; marketButton.textContent = 'Prezzo mercato'; marketButton.setAttribute('aria-label', 'Grafico prezzo mercato di ' + nameOf(recipe.combo || recipe.out));
+  marketButton.addEventListener('click', () => openMarketModal(String(recipe.combo || recipe.out)));
+  titleRow.append(marketButton);
   const meta = document.createElement('div'); meta.className = 'detailMeta muted';
   meta.textContent = (recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' › ' + (professionLabels[recipe.p] || recipe.p || 'Crafting') + ' › ' + (categoryLabels[categoryOf(recipe)] || categoryOf(recipe)) + ' · ' + masteryLabel(recipe.ml) + ' · ' + (recipe.outq || 1) + ' per tentativo' + (recipe.safe ? ' · risultato sicuro livello 63' : recipe.successChance != null ? ' · combo livello 70' : '');
   const control = document.createElement('div'); control.className = 'controls';
@@ -384,7 +482,7 @@ function renderDetail() {
     text.append(strong, small); choice.append(radio, text); sourceChoices.append(choice);
   }
   modeWrap.append(modeLabel, sourceChoices); control.append(modeWrap);
-  const note = document.createElement('p'); note.className = 'note'; note.textContent = recipe.safe ? 'La quantità indica quanti craft vuoi eseguire. Questa ricetta riesce sempre, produce l’arma base vincolata e non può fare combo. La tariffa in Kina non è inclusa.' : recipe.successChance != null ? 'La quantità indica quanti craft vuoi eseguire. Le combo attese usano il 25%: per esempio, 20 craft attivano in media 5 combo. Per i True Dragon il calcolo usa automaticamente la probabilità massima della professione al livello 50.' : 'La quantità indica quanti craft vuoi eseguire. Le combo attese sono una media: con il 25%, 20 craft corrispondono a 5 combo. Per i materiali, Craftato confronta mercato, craft e trasformazione 1:1 dall’Odyle.';
+  const note = document.createElement('p'); note.className = 'note'; note.textContent = recipe.safe ? 'Quantità = numero di craft. Questa ricetta riesce sempre, produce l’arma base vincolata e non può fare combo. La tariffa in Kina non è inclusa.' : recipe.successChance != null ? 'Quantità = numero di craft, non pezzi garantiti. Le combo usano il 25% e possono fallire: per esempio, 20 craft attivano in media 5 combo. Per True Dragon il calcolo usa la probabilità massima della professione al livello 50.' : 'Quantità = numero di craft. Le combo sono una media: al 25%, 20 craft corrispondono a 5 attivazioni. “Craftato” sceglie il metodo meno caro tra mercato, craft e trasformazione 1:1 dall’Odyle; “Market” compra tutti i materiali.';
   control.append(note);
   pane.append(titleRow, meta, control);
 
@@ -431,7 +529,7 @@ function renderDetail() {
     box(isLevel70Combo ? 'Costo comprando / 1 craft' : 'Costo comprando / 1 ' + resultLabel, shownMarketCost == null ? 'Prezzo mancante' : format(shownMarketCost) + ' Kina', marketAttempt.missing.length ? missingBuyNote : 'Totale materiali per ' + craftCount + ' craft: ' + format(marketAttempt.cost * craftCount) + ' Kina', shownMarketCost == null ? 'warn' : ''),
     box(isLevel70Combo ? 'Costo craftato / 1 craft' : 'Costo craftato / 1 ' + resultLabel, shownOwnCost == null ? 'Incompleto' : format(shownOwnCost) + ' Kina', ownAttempt.missing.length ? ownAttempt.missing.length + ' prezzi mancanti' : 'Totale per ' + craftCount + ' craft: ' + format(ownAttempt.cost * craftCount) + ' Kina' + (fallbackItems.size ? ' · alcuni pezzi comprati' : ''), shownOwnCost == null ? 'warn' : 'accent'),
   ];
-  summaryCards.push(box(recipe.combo ? 'Combo al 25% attese' : 'Oggetti attesi', recipe.combo ? formatAttempts(expectedComboActivations) : formatAttempts(expectedOutput), recipe.combo ? (recipe.successChance != null && !recipe.safe ? formatAttempts(expectedComboResults) + ' oggetti combo riusciti stimati considerando i fallimenti' : craftCount + ' craft × ' + formatPercent(comboRate * 100) + '% · valore medio') : 'Da ' + craftCount + ' craft', isLevel70Combo ? 'wide' : ''));
+  summaryCards.push(box(recipe.combo ? 'Combo al 25% attese' : 'Oggetti attesi', recipe.combo ? formatAttempts(expectedComboActivations) : formatAttempts(expectedOutput), recipe.combo ? (recipe.successChance != null && !recipe.safe ? formatAttempts(expectedComboResults) + ' combo riuscite stimate dopo i possibili fallimenti' : craftCount + ' craft × ' + formatPercent(comboRate * 100) + '% · media') : 'Risultato previsto da ' + craftCount + ' craft', isLevel70Combo ? 'wide' : ''));
   if (isLevel70Combo) {
     summaryCards.push(
       box('Prezzo mercato risultato normale Lv. 63', level63Price == null ? '—' : format(level63Price) + ' Kina', baseOutput ? (baseOutput.listings || 0) + ' annunci · prezzo minimo' : 'Nessun annuncio'),
@@ -451,6 +549,17 @@ function renderDetail() {
   }
   numbers.append(...summaryCards);
   pane.append(numbers);
+  const buyFinishedLoss = isLevel70Combo
+    ? [level63Profit, level70Profit].some(profit => profit != null && profit < 0)
+    : !recipe.bound && unitProfit != null && unitProfit < 0;
+  if (buyFinishedLoss) {
+    const advice = document.createElement('p');
+    advice.className = 'buyFinishedAdvice';
+    advice.textContent = isLevel70Combo
+      ? 'Compra il prodotto finito per i risultati in perdita: il suo prezzo di mercato, tolta la tassa del 10%, è inferiore al costo di un craft.'
+      : 'Conviene comprare l’oggetto finito: il suo prezzo di mercato, tolta la tassa del 10%, è inferiore al costo dei materiali per craftarlo.';
+    pane.append(advice);
+  }
   const heading = document.createElement('h3'); heading.textContent = recipe.transferFrom ? 'Equipaggiamento e materiali necessari' : 'Materiali necessari'; pane.append(heading);
   const table = document.createElement('table');
   const head = document.createElement('thead');
@@ -508,6 +617,7 @@ async function loadPrices(preserveOld = false) {
     const result = await getJSON('/api/prices?server=' + state.server + (preserveOld ? '&refresh=' + Date.now() : ''));
     state.prices = new Map(result.items.map(item => [String(item.item_key), { name: item.name, price: item.price, listings: item.listings }]));
     state.fetchedAt = result.retrieved_at;
+    savePriceHistory(state.prices, Date.now());
     const time = new Date(state.fetchedAt).toLocaleString('it-IT');
     status(state.prices.size + ' oggetti dal mercato · consultazione ' + time + ' · prezzi minimi degli annunci', 'good');
     renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail();
@@ -515,7 +625,39 @@ async function loadPrices(preserveOld = false) {
     if (!preserveOld) state.prices = new Map();
     status((preserveOld ? 'Aggiornamento non riuscito; restano i prezzi precedenti: ' : 'Prezzi non disponibili: ') + error.message + '. Puoi inserire prezzi manuali nelle ricette.', 'error');
     renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail();
-  } finally { $('reload').disabled = false; }
+  } finally {
+    $('reload').disabled = false;
+    updateRefreshButton();
+  }
+}
+
+function updateRefreshButton() {
+  const remaining = Math.max(0, manualRefreshAllowedAt - Date.now());
+  const button = $('reload');
+  const countdown = $('reloadCooldown');
+  if (!button || !countdown) return;
+  if (remaining > 0) {
+    button.disabled = true;
+    countdown.hidden = false;
+    countdown.textContent = Math.ceil(remaining / 1000) + ' s';
+  } else {
+    button.disabled = false;
+    countdown.hidden = true;
+    countdown.textContent = '';
+  }
+}
+
+function startManualRefreshCooldown() {
+  manualRefreshAllowedAt = Date.now() + MANUAL_REFRESH_COOLDOWN_MS;
+  if (refreshCountdownTimer) clearInterval(refreshCountdownTimer);
+  updateRefreshButton();
+  refreshCountdownTimer = setInterval(() => {
+    updateRefreshButton();
+    if (Date.now() >= manualRefreshAllowedAt) {
+      clearInterval(refreshCountdownTimer);
+      refreshCountdownTimer = null;
+    }
+  }, 250);
 }
 
 async function init() {
@@ -529,8 +671,17 @@ async function init() {
   await loadPrices();
 }
 
+$('closeMarketModal').addEventListener('click', () => $('marketModal').close());
+$('marketModal').addEventListener('click', event => { if (event.target === $('marketModal')) $('marketModal').close(); });
+window.addEventListener('resize', () => { const dialog = $('marketModal'); if (dialog.open && dialog.dataset.itemKey) drawPriceChart(dialog.dataset.itemKey, modalHistory); });
+
 $('region').addEventListener('change', () => { state.region = $('region').value; fillServers(); localStorage.setItem('aion2craft:server', String(state.server)); fillCategories(); chooseFirst(); loadPrices(); });
 $('server').addEventListener('change', () => { state.server = Number($('server').value); localStorage.setItem('aion2craft:server', String(state.server)); fillCategories(); chooseFirst(); loadPrices(); });
 $('search').addEventListener('input', chooseFirst);
-$('reload').addEventListener('click', () => loadPrices(true));
+$('reload').addEventListener('click', () => {
+  if (Date.now() < manualRefreshAllowedAt) return;
+  startManualRefreshCooldown();
+  loadPrices(true);
+});
+setInterval(() => loadPrices(true), AUTO_REFRESH_INTERVAL_MS);
 init().catch(error => status('Impossibile caricare i dati: ' + error.message + '. Riprova fra poco.', 'error'));

@@ -1,0 +1,10 @@
+{
+  "name": "aion2-craft-share",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node tests/cost-model.test.mjs",
+    "check": "node --check public/app.js && node --check public/cost-model.js && node --check server.mjs && node --check functions/api/servers.js && node --check functions/api/graph.js && node --check functions/api/prices.js && node --check functions/api/history.js && node --check ../price-collector/src/index.js"
+  }
+}
