@@ -366,7 +366,7 @@ function renderRecommendations() {
     const previous = byResult.get(targetKey);
     if (!previous || candidate.profit > previous.profit) byResult.set(targetKey, candidate);
   }
-  const recommendations = [...byResult.values()].sort((a, b) => b.profit - a.profit).slice(0, 6);
+  const recommendations = [...byResult.values()].sort((a, b) => b.profit - a.profit).slice(0, 10);
   if (!recommendations.length) {
     const message = document.createElement('p'); message.className = 'recommendationEmpty'; message.textContent = 'Nessun craft con guadagno calcolabile nei prezzi disponibili.';
     list.replaceChildren(message);

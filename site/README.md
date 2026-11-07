@@ -4,7 +4,7 @@ Calcolatore di crafting condivisibile. Usa il mercato Global di Vaizel, Europa (
 
 In alto trovi le card dei prezzi rapidi per Wrathful Mind, Wrathful Ego, Wrathful Will, tutte le qualità di Odyle, Raw Leather e le Refining Stone. Si aggiornano per Vaizel con **Aggiorna prezzi**.
 
-La sezione **Craft consigliati** confronta il costo del percorso craftato più economico con il ricavo netto dopo la tassa di vendita del 10% e mostra fino a sei armi o armature con margine positivo. Per le ricette combo il costo è quello medio necessario a ottenere un pezzo combo; i fallimenti True/Star Dragon usano le probabilità massime della professione al livello 50. La tariffa di inserzione e il valore dei risultati normali prodotti durante i tentativi non vengono sottratti.
+La sezione **Craft consigliati** confronta il costo del percorso craftato più economico con il ricavo netto dopo la tassa di vendita del 10% e mostra fino a dieci armi o armature con margine positivo. Per le ricette combo il costo è quello medio necessario a ottenere un pezzo combo; i fallimenti True/Star Dragon usano le probabilità massime della professione al livello 50. La tariffa di inserzione e il valore dei risultati normali prodotti durante i tentativi non vengono sottratti.
 
 La scheda **Calculator** serve a registrare una sequenza reale di crafting per armi, armature e gioielli. Scegli professione, categoria e oggetto iniziale; per ogni passaggio inserisci i craft tentati e le combo ottenute (per le ricette rischiose, anche i risultati normali). Le combo utilizzate per proseguire la sequenza non vengono contate come vendute. Il riepilogo mostra spesa stimata, ricavo dopo la tassa del 10% e guadagno o perdita. I dati inseriti si salvano nel browser.
 
