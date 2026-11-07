@@ -821,9 +821,8 @@ function renderSequenceCalculator(rootId) {
 
 function renderTransferCosts(pane, recipe, craftCount) {
   const faction = serverFaction() === 'Asmodian' ? 'dark' : 'light';
-  const sourceKey = String(recipe.transferFrom || '');
   const model = createCostModel(state.graph, unitPrice, faction,
-    key => String(key) === sourceKey || localStorage.getItem(overrideKey(key)) === '0',
+    key => localStorage.getItem(overrideKey(key)) === '0',
     {
       optimizeMaterials: true,
       singleAttemptComboCrafting: true,
@@ -838,10 +837,18 @@ function renderTransferCosts(pane, recipe, craftCount) {
     return { key, quantity: Number(quantity) || 0, kind, own: model.ownUnit(key), market: state.prices.get(key), transfer: kind === 'transfer' };
   });
   const totalCost = attempt.cost == null ? null : attempt.cost * craftCount;
+  let extraMaterialsCost = 0;
+  const missingExtraMaterials = new Set();
+  for (const line of attempt.lines) {
+    if (line.kind === 'transfer') continue;
+    if (line.unit.cost == null) for (const key of line.unit.missing || [line.key]) missingExtraMaterials.add(String(key));
+    else extraMaterialsCost += line.unit.cost * line.quantity;
+  }
+  const extraMaterialsTotal = missingExtraMaterials.size ? null : extraMaterialsCost * craftCount;
   const summary = document.createElement('div'); summary.className = 'numbers transferCostSummary';
   summary.append(
-    box('Costo materiali per 1 tentativo', attempt.cost == null ? 'Incompleto' : format(attempt.cost) + ' Kina', attempt.missing.length ? attempt.missing.length + ' prezzi mancanti nei materiali necessari' : 'Include i componenti craftati al costo di un singolo tentativo', attempt.cost == null ? 'warn' : 'accent'),
-    box('Costo totale per ' + craftCount + (craftCount === 1 ? ' tentativo' : ' tentativi'), totalCost == null ? 'Incompleto' : format(totalCost) + ' Kina', 'Gli oggetti della fase precedente sono considerati già disponibili', totalCost == null ? 'warn' : 'accent')
+    box('Altri materiali · per 1 tentativo', extraMaterialsTotal == null ? 'Incompleto' : format(extraMaterialsCost) + ' Kina', extraMaterialsTotal == null ? missingExtraMaterials.size + ' prezzi mancanti · totale per ' + craftCount + ': incompleto' : 'Escluso l’oggetto da trasferire · totale per ' + craftCount + ': ' + format(extraMaterialsTotal) + ' Kina', extraMaterialsTotal == null ? 'warn' : 'accent'),
+    box('Totale con oggetto da trasferire · per 1 tentativo', totalCost == null ? 'Incompleto' : format(attempt.cost) + ' Kina', totalCost == null ? 'Include il costo craftato della fase precedente · totale per ' + craftCount + ': incompleto' : 'Include il costo craftato della fase precedente · totale per ' + craftCount + ': ' + format(totalCost) + ' Kina', totalCost == null ? 'warn' : 'accent')
   );
   pane.append(summary);
 
@@ -855,12 +862,12 @@ function renderTransferCosts(pane, recipe, craftCount) {
     const tr = document.createElement('tr');
     const name = document.createElement('td'); name.className = 'material';
     const nameWrap = document.createElement('div'); nameWrap.className = 'materialName';
-    const nameText = document.createElement('span'); nameText.className = 'itemGrade' + gradeClass(row.key); nameText.textContent = nameOf(row.key) + (row.transfer ? ' · già disponibile' : '');
+    const nameText = document.createElement('span'); nameText.className = 'itemGrade' + gradeClass(row.key); nameText.textContent = nameOf(row.key) + (row.transfer ? ' · costo craftato incluso' : '');
     nameWrap.append(iconOf(row.key), nameText); name.append(nameWrap);
     const count = document.createElement('td'); count.textContent = formatAttempts(row.quantity * craftCount);
     const marketCell = document.createElement('td');
     if (row.transfer) {
-      const owned = document.createElement('span'); owned.className = 'sourceTag'; owned.textContent = 'Già posseduto · non serve comprarlo'; marketCell.append(owned);
+      const source = document.createElement('span'); source.className = 'sourceTag'; source.textContent = 'Prezzo mercato non usato: valorizzato craftando'; marketCell.append(source);
     } else {
       const input = document.createElement('input'); input.className = 'priceInput'; input.type = 'number'; input.min = '0'; input.step = '1';
       input.placeholder = row.market?.price == null ? (GLOBAL_VENDOR_PRICES[row.key] == null ? 'Mancante' : String(GLOBAL_VENDOR_PRICES[row.key])) : String(row.market.price);
@@ -879,7 +886,7 @@ function renderTransferCosts(pane, recipe, craftCount) {
     if (row.own.cost == null) { methodCell.className = 'missing'; methodCell.textContent = 'Prezzo mancante'; }
     else {
       methodCell.append(document.createTextNode(format(row.own.cost) + ' Kina'));
-      if (row.transfer) { const note = document.createElement('div'); note.className = 'sourceTag'; note.textContent = 'Fase precedente già posseduta'; methodCell.append(note); }
+      if (row.transfer) { const note = document.createElement('div'); note.className = 'sourceTag'; note.textContent = 'Fase precedente valorizzata craftando'; methodCell.append(note); }
       else if (row.own.source === 'craft' || row.own.source === 'morph') addBreakdown(methodCell, row.own);
       else { const note = document.createElement('div'); note.className = 'sourceTag'; note.textContent = row.own.source === 'npc' ? 'Comprato dal negoziante' : row.own.source === 'owned' ? 'Già posseduto' : 'Acquistato al mercato'; methodCell.append(note); }
     }
@@ -891,7 +898,7 @@ function renderTransferCosts(pane, recipe, craftCount) {
   const scroll = document.createElement('div'); scroll.className = 'tableScroll'; scroll.append(table); pane.append(scroll);
   if (missing.size) addMissingPriceInputs(pane, [...missing], 'Inserisci i prezzi mancanti dei materiali');
   const note = document.createElement('p'); note.className = 'muted';
-  note.textContent = 'Il costo dei componenti craftabili considera un singolo tentativo. La combo non moltiplica il costo per quattro; l’oggetto trasferito dalla fase precedente è conteggiato come già posseduto. Tariffe delle ricette escluse.';
+  note.textContent = 'Il costo parte dal True Dragon Lord craftato e include ogni passaggio precedente della linea. Le combo al 25% sono valorizzate al costo di un singolo tentativo, senza moltiplicare per quattro. Tariffe delle ricette escluse.';
   pane.append(note);
 }
 
