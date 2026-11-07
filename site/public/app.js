@@ -1,7 +1,8 @@
 import { createCostModel, GLOBAL_VENDOR_PRICES } from './cost-model.js';
 
 const $ = id => document.getElementById(id);
-const state = { graph: null, servers: [], prices: new Map(), region: 'EU', server: 11303, mode: 'crafting', profession: 'blacksmithing', category: 'all', selected: null, materialMode: 'optimize', fetchedAt: null };
+const VAIZEL_SERVER = { server_id: 11303, region: 'EU', name: 'Vaizel', faction: 'Elyos' };
+const state = { graph: null, servers: [VAIZEL_SERVER], prices: new Map(), region: 'EU', server: VAIZEL_SERVER.server_id, mode: 'crafting', profession: 'blacksmithing', category: 'all', selected: null, materialMode: 'optimize', fetchedAt: null };
 let modalHistory = null;
 const format = value => value == null || !Number.isFinite(value) ? '—' : Math.round(value).toLocaleString('it-IT');
 const formatAttempts = value => Number(value).toLocaleString('it-IT', { maximumFractionDigits: 2 });
@@ -17,8 +18,11 @@ let refreshCountdownTimer = null;
 const QUICK_PRICE_ITEMS = [
   '610511013', '610511015', '610511014',
   '610610013', '610610014', '610610015', '610610016',
+  '610530011',
   '610530001', '610530005', '610530008', '610530010',
 ];
+const SEQUENCE_PROFESSIONS = ['blacksmithing', 'tailoring', 'jewelcrafting'];
+const SEQUENCE_CATEGORIES = new Set(['greatsword', 'sword', 'dagger', 'mace', 'guarder', 'helmet', 'shoulder', 'torso', 'pants', 'gloves', 'boots', 'cape', 'bow', 'staff', 'necklace', 'earring', 'ring', 'bracelet', 'magicbook', 'orb']);
 const professionLabels = { blacksmithing: 'Blacksmithing', tailoring: 'Armorsmithing', jewelcrafting: 'Handicrafting', alchemy: 'Alchemy', cooking: 'Cooking' };
 const professionHints = { blacksmithing: 'Armi e guard', tailoring: 'Armature', jewelcrafting: 'Gioielli, archi e bastoni', alchemy: 'Orbi e grimori', cooking: 'Cibo' };
 const categoryLabels = { greatsword: 'Greatsword', sword: 'Longsword', dagger: 'Dagger', mace: 'Mace', guarder: 'Guard', helmet: 'Helm', shoulder: 'Pauldrons', torso: 'Top', pants: 'Legs', gloves: 'Gloves', boots: 'Shoes', cape: 'Cloak', bow: 'Bow', staff: 'Staff', necklace: 'Necklace', earring: 'Earrings', ring: 'Ring', bracelet: 'Bracelet', magicbook: 'Spellbook', orb: 'Orb', potion: 'Potion', scroll: 'Scroll', magicstone: 'Manastone', food: 'Food', drink: 'Drink', craftresource: 'Materials', elevate: 'Upgrade' };
@@ -247,12 +251,38 @@ function categoryOf(recipe) {
 
 function professionRecipes() {
   const faction = serverFaction();
-  return recipes().filter(([, recipe]) => recipe.type === state.mode && recipe.p === state.profession && (!faction || recipe.qr === (faction === 'Elyos' ? 'light' : 'dark')));
+  const recipeType = state.mode === 'calculator' ? 'crafting' : state.mode;
+  return recipes().filter(([, recipe]) => recipe.type === recipeType && recipe.p === state.profession && (!faction || recipe.qr === (faction === 'Elyos' ? 'light' : 'dark')) && (state.mode !== 'calculator' || (SEQUENCE_CATEGORIES.has(categoryOf(recipe)) && recipe.combo && !recipe.safe)));
+}
+
+function sequenceFor(rootId) {
+  const root = state.graph?.recipes?.[rootId];
+  if (!root) return [];
+  const candidates = professionRecipes().filter(([, recipe]) => categoryOf(recipe) === categoryOf(root));
+  const steps = [[rootId, root]];
+  const seen = new Set([String(rootId)]);
+  let previous = root;
+  while (previous.combo && steps.length < 12) {
+    const next = candidates
+      .filter(([id, recipe]) => !seen.has(String(id)) && recipe.in.some(([key]) => String(key) === String(previous.combo)) && (recipe.ml == null || previous.ml == null || Number(recipe.ml) > Number(previous.ml)))
+      .sort((a, b) => Number(a[1].ml || 0) - Number(b[1].ml || 0) || nameOf(a[1].out).localeCompare(nameOf(b[1].out), 'en'))[0];
+    if (!next) break;
+    steps.push(next); seen.add(String(next[0])); previous = next[1];
+  }
+  return steps;
+}
+
+function sequenceRoots(categoryFilter = state.category) {
+  const candidates = professionRecipes().filter(([, recipe]) => categoryFilter === 'all' || categoryOf(recipe) === categoryFilter);
+  const comboKeys = new Set(candidates.map(([, recipe]) => String(recipe.combo)));
+  return candidates.filter(([, recipe]) => !recipe.in.some(([key]) => comboKeys.has(String(key))))
+    .filter(([id]) => sequenceFor(id).length > 1);
 }
 
 function visibleRecipes() {
   const query = $('search').value.trim().toLocaleLowerCase();
-  return professionRecipes()
+  const available = state.mode === 'calculator' ? sequenceRoots() : professionRecipes();
+  return available
     .filter(([, recipe]) =>
       (state.category === 'all' || categoryOf(recipe) === state.category) &&
       (!query || nameOf(recipe.out).toLocaleLowerCase().includes(query))
@@ -270,34 +300,9 @@ function chooseFirst() {
   renderDetail();
 }
 
-function fillRegions() {
-  const labels = { EU: 'Europa', NAE: 'Nord America Est', NAW: 'Nord America Ovest', LA: 'America Latina', AS: 'Asia (Global)' };
-  const available = [...new Set(state.servers.map(server => server.region))];
-  available.sort((a, b) => Object.keys(labels).indexOf(a) - Object.keys(labels).indexOf(b));
-  $('region').replaceChildren(...available.map(region => {
-    const option = document.createElement('option');
-    option.value = region;
-    option.textContent = labels[region] || region;
-    return option;
-  }));
-  if (!available.includes(state.region)) state.region = available[0];
-  $('region').value = state.region;
-}
-
-function fillServers() {
-  const servers = state.servers.filter(server => server.region === state.region);
-  $('server').replaceChildren(...servers.map(server => {
-    const option = document.createElement('option');
-    option.value = String(server.server_id);
-    option.textContent = server.name + ' · ' + (server.faction === 'Elyos' ? 'Elyos' : 'Asmodian');
-    return option;
-  }));
-  if (!servers.some(server => server.server_id === state.server)) state.server = servers[0]?.server_id;
-  $('server').value = String(state.server);
-}
-
 function fillProfessions() {
-  $('professions').replaceChildren(...Object.keys(professionLabels).map(value => {
+  const availableProfessions = state.mode === 'calculator' ? SEQUENCE_PROFESSIONS : Object.keys(professionLabels);
+  $('professions').replaceChildren(...availableProfessions.map(value => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = state.profession === value ? 'active' : '';
@@ -310,18 +315,24 @@ function fillProfessions() {
 }
 
 function fillModes() {
-  $('modes').replaceChildren(...[['crafting', 'Crafting'], ['transfer', 'Transfer Crafting']].map(([value, label]) => {
+  $('modes').replaceChildren(...[['crafting', 'Crafting'], ['transfer', 'Transfer Crafting'], ['calculator', 'Calculator']].map(([value, label]) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = state.mode === value ? 'active' : '';
     button.textContent = label;
-    button.addEventListener('click', () => { state.mode = value; state.category = 'all'; $('search').value = ''; fillModes(); fillCategories(); chooseFirst(); });
+    button.addEventListener('click', () => {
+      state.mode = value;
+      if (value === 'calculator' && !SEQUENCE_PROFESSIONS.includes(state.profession)) state.profession = 'blacksmithing';
+      state.category = 'all'; $('search').value = '';
+      fillModes(); fillProfessions(); fillCategories(); chooseFirst();
+    });
     return button;
   }));
 }
 
 function fillCategories() {
-  const available = [...new Set(professionRecipes().map(([, recipe]) => categoryOf(recipe)))];
+  const categoryRecipes = state.mode === 'calculator' ? sequenceRoots('all') : professionRecipes();
+  const available = [...new Set(categoryRecipes.map(([, recipe]) => categoryOf(recipe)))];
   available.sort((a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b));
   if (state.category !== 'all' && !available.includes(state.category)) state.category = 'all';
   $('categories').replaceChildren(...[['all', 'Tutte'], ...available.map(value => [value, categoryLabels[value] || value])].map(([value, label]) => {
@@ -337,6 +348,12 @@ function fillCategories() {
 function renderResults() {
   const matching = visibleRecipes();
   $('count').textContent = '(' + matching.length + ')';
+  const listHeading = document.querySelector('.panelHead h2');
+  const listHint = document.querySelector('.panelHead p');
+  if (listHeading) listHeading.firstChild.textContent = state.mode === 'calculator' ? 'Oggetto di partenza ' : 'Ricette ';
+  if (listHint) listHint.textContent = state.mode === 'calculator'
+    ? 'Scegli una categoria e l’oggetto iniziale della sequenza; puoi cercarlo per nome.'
+    : 'Scegli prima il tipo di crafting e la professione, poi filtra per categoria o cerca il nome.';
   const list = $('results');
   list.replaceChildren();
   if (!matching.length) {
@@ -355,7 +372,9 @@ function renderResults() {
     const title = document.createElement('strong'); title.className = 'itemGrade' + gradeClass(recipe.out);
     title.textContent = nameOf(recipe.out);
     const sub = document.createElement('span');
-    sub.textContent = (categoryLabels[categoryOf(recipe)] || 'Materiali') + ' · ' + masteryLabel(recipe.ml) + (recipe.safe ? ' · Sicuro · livello 63 vincolato' : recipe.successChance != null ? ' · Combo · risultato livello 70' : '');
+    sub.textContent = state.mode === 'calculator'
+      ? 'Oggetto di partenza · combo: ' + nameOf(recipe.combo) + ' · ' + sequenceFor(id).length + ' passaggi'
+      : (categoryLabels[categoryOf(recipe)] || 'Materiali') + ' · ' + masteryLabel(recipe.ml) + (recipe.safe ? ' · Sicuro · livello 63 vincolato' : recipe.successChance != null ? ' · Combo · risultato livello 70' : '');
     text.append(title, sub);
     button.append(icon, text);
     button.addEventListener('click', () => { state.selected = id; renderResults(); renderDetail(); });
@@ -433,9 +452,147 @@ function addMissingPriceInputs(parent, keys, title) {
   parent.append(group);
 }
 
+function renderSequenceCalculator(rootId) {
+  const pane = $('detail');
+  const steps = sequenceFor(rootId);
+  const root = steps[0]?.[1];
+  pane.replaceChildren();
+  if (!root || steps.length < 2) {
+    const title = document.createElement('h2'); title.textContent = 'Sequenza non disponibile';
+    pane.append(title); return;
+  }
+
+  const titleRow = document.createElement('div'); titleRow.className = 'titleRow';
+  const title = document.createElement('h2'); title.className = 'itemGrade' + gradeClass(root.out); title.textContent = 'Calculator · ' + nameOf(root.out);
+  titleRow.append(iconOf(root.out, 'large'), title); pane.append(titleRow);
+  const intro = document.createElement('p'); intro.className = 'calculatorIntro';
+  intro.textContent = 'Inserisci i tentativi e le combo realmente ottenute a ogni passaggio. Per le ricette normali i risultati base sono craft tentati meno combo; nelle ricette rischiose inserisci anche i risultati Lv. 63. Le combo usate nella fase successiva non sono conteggiate come vendute; al ricavo viene sottratta la tassa del 10%.';
+  pane.append(intro);
+
+  const modeWrap = document.createElement('fieldset'); modeWrap.className = 'materialMode';
+  const modeLabel = document.createElement('legend'); modeLabel.textContent = 'Come valorizzare i materiali';
+  const sourceChoices = document.createElement('div'); sourceChoices.className = 'sourceChoices';
+  for (const [value, label, hint] of [
+    ['optimize', 'Craftato', 'Sceglie il costo minore tra craft, Odyle e mercato'],
+    ['market', 'Market', 'Valorizza i materiali al prezzo di mercato'],
+  ]) {
+    const choice = document.createElement('label'); choice.className = 'sourceChoice';
+    const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'materialMode'; radio.value = value; radio.checked = state.materialMode === value;
+    radio.addEventListener('change', () => { if (radio.checked) { state.materialMode = value; renderDetail(); } });
+    const text = document.createElement('span'); const strong = document.createElement('strong'); strong.textContent = label; const small = document.createElement('small'); small.textContent = hint;
+    text.append(strong, small); choice.append(radio, text); sourceChoices.append(choice);
+  }
+  modeWrap.append(modeLabel, sourceChoices); pane.append(modeWrap);
+
+  const storageKey = 'aion2craft:calculator:' + state.server + ':' + rootId;
+  let run;
+  try { run = JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { run = null; }
+  if (!run || !Array.isArray(run.steps) || run.steps.length !== steps.length) run = { steps: steps.map(() => ({ crafts: 0, normal: 0, combo: 0 })) };
+  const faction = serverFaction() === 'Asmodian' ? 'dark' : 'light';
+  const model = createCostModel(state.graph, unitPrice, faction, key => localStorage.getItem(overrideKey(key)) === '0', {
+    optimizeMaterials: state.materialMode === 'optimize',
+    successRateFor: id => state.graph.recipes[id]?.successChance != null ? MAX_CRAFT_SUCCESS : undefined,
+    comboSuccessRateFor: id => state.graph.recipes[id]?.comboSuccessChance != null ? MAX_COMBO_SUCCESS : undefined,
+  });
+  const total = { cost: 0, revenue: 0, missingCosts: new Set(), missingSales: new Set(), invalid: false };
+
+  for (let index = 0; index < steps.length; index++) {
+    const [recipeId, recipe] = steps[index];
+    const values = run.steps[index];
+    values.crafts = Math.max(0, Number(values.crafts) || 0);
+    values.normal = Math.max(0, Number(values.normal) || 0);
+    values.combo = Math.max(0, Number(values.combo) || 0);
+    const stage = document.createElement('section'); stage.className = 'calculatorStage';
+    const head = document.createElement('div'); head.className = 'calculatorStageHead';
+    head.append(iconOf(recipe.out));
+    const headText = document.createElement('div'); const headName = document.createElement('strong'); headName.textContent = (index + 1) + '. ' + nameOf(recipe.out);
+    const headMeta = document.createElement('small'); headMeta.textContent = recipe.combo ? 'Risultato: ' + nameOf(recipe.out) + ' · combo: ' + nameOf(recipe.combo) : 'Risultato normale';
+    headText.append(headName, headMeta); head.append(headText); stage.append(head);
+
+    const fields = document.createElement('div'); fields.className = 'calculatorStageInputs';
+    const risky = recipe.successChance != null && !recipe.safe;
+    const stageInputs = [['crafts', 'Craft tentati'], ...(risky ? [['normal', 'Risultati Lv. 63']] : []), ['combo', risky ? 'Combo Lv. 70 ottenute' : 'Combo ottenute']];
+    for (const [field, labelText] of stageInputs) {
+      const wrap = document.createElement('div'); const label = document.createElement('label'); label.textContent = labelText;
+      const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.step = '1'; input.value = String(values[field]); input.setAttribute('aria-label', labelText + ' · ' + nameOf(recipe.out));
+      input.addEventListener('change', () => {
+        const nextValue = Math.max(0, Math.floor(Number(input.value) || 0));
+        values[field] = nextValue;
+        if (field === 'combo' && steps[index + 1]) {
+          const nextRecipe = steps[index + 1][1];
+          const consumedPerCraft = nextRecipe.in.find(([key]) => String(key) === String(recipe.combo))?.[1] || 1;
+          run.steps[index + 1].crafts = Math.floor(nextValue / Number(consumedPerCraft));
+        }
+        localStorage.setItem(storageKey, JSON.stringify(run));
+        renderDetail();
+      });
+      wrap.append(label, input); fields.append(wrap);
+    }
+    stage.append(fields);
+
+    const previousComboKey = index > 0 ? String(steps[index - 1][1].combo) : null;
+    const attempt = model.ownAttempt(recipe);
+    let unitCost = 0;
+    const stageMissingCosts = new Set();
+    for (const line of attempt.lines) {
+      if (previousComboKey && String(line.key) === previousComboKey) continue;
+      if (line.unit.cost == null) for (const key of line.unit.missing || [line.key]) stageMissingCosts.add(String(key));
+      else unitCost += line.unit.cost * line.quantity;
+    }
+    if (values.crafts) for (const key of stageMissingCosts) total.missingCosts.add(key);
+    const stageCost = values.crafts && stageMissingCosts.size ? null : unitCost * values.crafts;
+    if (stageCost != null) total.cost += stageCost;
+
+    const normalCount = risky ? values.normal : Math.max(0, values.crafts * (Number(recipe.outq) || 1) - values.combo);
+    const normalPrice = unitPrice(String(recipe.out));
+    const comboPrice = recipe.combo ? unitPrice(String(recipe.combo)) : null;
+    let comboRemaining = values.combo;
+    if (steps[index + 1] && recipe.combo) {
+      const nextRecipe = steps[index + 1][1];
+      const inputQuantity = Number(nextRecipe.in.find(([key]) => String(key) === String(recipe.combo))?.[1] || 1);
+      comboRemaining -= run.steps[index + 1].crafts * inputQuantity;
+      if (comboRemaining < 0) total.invalid = true;
+    }
+    if (normalCount > 0) {
+      if (normalPrice == null) total.missingSales.add(String(recipe.out));
+      else total.revenue += netSale(normalPrice) * normalCount;
+    }
+    if (comboRemaining > 0 && recipe.combo) {
+      if (comboPrice == null) total.missingSales.add(String(recipe.combo));
+      else total.revenue += netSale(comboPrice) * comboRemaining;
+    }
+    if (values.combo > values.crafts * (Number(recipe.outq) || 1)) total.invalid = true;
+    const costNote = document.createElement('div'); costNote.className = 'calculatorStageCost';
+    costNote.textContent = 'Costo stimato per craft: ' + (stageMissingCosts.size && values.crafts ? 'incompleto · controlla i prezzi dei materiali' : format(unitCost) + ' Kina') + (index > 0 ? ' · il pezzo combo della fase prima è già conteggiato' : '');
+    stage.append(costNote); pane.append(stage);
+  }
+
+  const spent = total.missingCosts.size ? null : total.cost;
+  const revenue = total.missingSales.size ? null : total.revenue;
+  const profit = spent == null || revenue == null || total.invalid ? null : revenue - spent;
+  const summary = document.createElement('div'); summary.className = 'numbers calculatorTotals';
+  summary.append(
+    box('Spesa totale stimata', spent == null ? 'Incompleta' : format(spent) + ' Kina', state.materialMode === 'optimize' ? 'Materiali valorizzati con il metodo meno caro' : 'Materiali valorizzati al mercato', spent == null ? 'warn' : ''),
+    box('Ricavo netto stimato', revenue == null ? 'Incompleto' : format(revenue) + ' Kina', 'Prezzi Vaizel meno tassa di vendita 10%', revenue == null ? 'warn' : 'accent'),
+    box(profit == null ? 'Guadagno / perdita' : profit >= 0 ? 'Guadagno netto' : 'Perdita netta', profit == null ? '—' : (profit >= 0 ? '+' : '−') + format(Math.abs(profit)) + ' Kina', 'Ricavo netto − spesa totale', 'outcomeProfit ' + (profit == null ? '' : profit >= 0 ? 'gain' : 'loss'))
+  );
+  pane.append(summary);
+  if (total.invalid) {
+    const warning = document.createElement('p'); warning.className = 'buyFinishedAdvice';
+    warning.textContent = 'Controlla i risultati inseriti: hai indicato più pezzi prodotti dei craft tentati oppure hai usato più combo di quante ne avevi disponibili.';
+    pane.append(warning);
+  }
+  const footnote = document.createElement('p'); footnote.className = 'calculatorNote';
+  footnote.textContent = 'I prezzi di vendita mancanti o i prezzi dei materiali mancanti rendono il totale incompleto. I pezzi combo usati nella fase successiva non vengono conteggiati come venduti. I risultati inseriti sono quelli reali della tua sessione; commissioni di inserzione escluse.';
+  pane.append(footnote);
+  if (total.missingCosts.size) addMissingPriceInputs(pane, [...total.missingCosts], 'Inserisci i prezzi mancanti dei materiali');
+  if (total.missingSales.size) addMissingPriceInputs(pane, [...total.missingSales], 'Inserisci i prezzi mancanti dei risultati');
+}
+
 function renderDetail() {
   const pane = $('detail');
   const recipe = state.graph?.recipes?.[state.selected];
+  if (state.mode === 'calculator' && recipe) { renderSequenceCalculator(state.selected); return; }
   if (!recipe) {
     pane.replaceChildren();
     const title = document.createElement('h2'); title.textContent = 'Nessuna ricetta';
@@ -611,7 +768,7 @@ function renderDetail() {
 
 async function loadPrices(preserveOld = false) {
   if (!state.server) return;
-  status((preserveOld ? 'Aggiornamento' : 'Caricamento') + ' prezzi di ' + $('server').selectedOptions[0]?.textContent + '…');
+  status((preserveOld ? 'Aggiornamento' : 'Caricamento') + ' prezzi di Vaizel · Europa…');
   $('reload').disabled = true;
   try {
     const result = await getJSON('/api/prices?server=' + state.server + (preserveOld ? '&refresh=' + Date.now() : ''));
@@ -662,12 +819,7 @@ function startManualRefreshCooldown() {
 
 async function init() {
   state.graph = await getJSON('/api/graph');
-  const serverResult = await getJSON('/api/servers');
-  state.servers = serverResult.servers || [];
-  const saved = Number(localStorage.getItem('aion2craft:server'));
-  if (state.servers.some(server => server.server_id === saved)) state.server = saved;
-  state.region = state.servers.find(server => server.server_id === state.server)?.region || 'EU';
-  fillRegions(); fillServers(); fillModes(); fillProfessions(); fillCategories(); renderQuickPrices(); renderRecommendations(); chooseFirst();
+  fillModes(); fillProfessions(); fillCategories(); renderQuickPrices(); renderRecommendations(); chooseFirst();
   await loadPrices();
 }
 
@@ -675,8 +827,6 @@ $('closeMarketModal').addEventListener('click', () => $('marketModal').close());
 $('marketModal').addEventListener('click', event => { if (event.target === $('marketModal')) $('marketModal').close(); });
 window.addEventListener('resize', () => { const dialog = $('marketModal'); if (dialog.open && dialog.dataset.itemKey) drawPriceChart(dialog.dataset.itemKey, modalHistory); });
 
-$('region').addEventListener('change', () => { state.region = $('region').value; fillServers(); localStorage.setItem('aion2craft:server', String(state.server)); fillCategories(); chooseFirst(); loadPrices(); });
-$('server').addEventListener('change', () => { state.server = Number($('server').value); localStorage.setItem('aion2craft:server', String(state.server)); fillCategories(); chooseFirst(); loadPrices(); });
 $('search').addEventListener('input', chooseFirst);
 $('reload').addEventListener('click', () => {
   if (Date.now() < manualRefreshAllowedAt) return;
