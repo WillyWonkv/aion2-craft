@@ -115,6 +115,7 @@ export function createCostModel(graph, unitPrice, faction, isOwned = () => false
   }
 
   function marketUnit(key) {
+    if (options.excludeMarketFor?.(key)) return { cost: null, missing: [key], source: 'missing' };
     const price = unitPrice(key);
     if (price != null && Number.isFinite(price)) return { cost: price, missing: [], source: 'market' };
     const vendor = GLOBAL_VENDOR_PRICES[key];
@@ -122,6 +123,8 @@ export function createCostModel(graph, unitPrice, faction, isOwned = () => false
   }
 
   function ownUnit(key, trail = new Set()) {
+    const override = options.unitOverrideFor?.(key);
+    if (override) return override;
     if (isOwned(key)) return { cost: 0, missing: [], source: 'owned' };
     if (!gear.has(key) && !optimizeMaterials) return marketUnit(key);
     if (memo.has(key)) return memo.get(key);

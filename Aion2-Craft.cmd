@@ -895,11 +895,31 @@ function renderSequenceCalculator(rootId) {
 
 function renderTransferCosts(pane, recipe, craftCount) {
   const faction = serverFaction() === 'Asmodian' ? 'dark' : 'light';
+  const baseModel = createCostModel(state.graph, unitPrice, faction, key => localStorage.getItem(overrideKey(key)) === '0', {
+    optimizeMaterials: true,
+    successRateFor: id => state.graph.recipes[id]?.successChance != null ? MAX_CRAFT_SUCCESS : undefined,
+    comboSuccessRateFor: id => state.graph.recipes[id]?.comboSuccessChance != null ? MAX_COMBO_SUCCESS : undefined,
+  });
+  const baseGearCosts = new Map();
+  const boundTransferItems = new Set(recipes().filter(([, r]) => r.type === 'transfer' && r.qr === faction).flatMap(([, r]) => [r.out, r.combo].filter(Boolean).map(String)));
+  for (const [id, baseRecipe] of recipes()) {
+    if (baseRecipe.type !== 'crafting' || baseRecipe.qr !== faction || baseRecipe.safe || baseRecipe.successChance == null) continue;
+    const attempt = baseModel.ownAttempt(baseRecipe);
+    const key = String(baseRecipe.out);
+    const market = state.prices.get(key);
+    const marketPrice = market?.price != null && Number(market.listings) > 0 ? Number(market.price) : null;
+    const buyBase = /^True Dragon Lord /.test(nameOf(key)) && marketPrice != null && (attempt.cost == null || marketPrice < attempt.cost);
+    baseGearCosts.set(key, buyBase
+      ? { cost: marketPrice, missing: [], source: 'market', craftCost: attempt.cost }
+      : { ...attempt, source: 'craft', recipeId: id, combo: false, expectedAttempts: 1, attemptCost: attempt.cost });
+  }
   const model = createCostModel(state.graph, unitPrice, faction,
     key => localStorage.getItem(overrideKey(key)) === '0',
     {
       optimizeMaterials: true,
       singleAttemptComboCrafting: true,
+      unitOverrideFor: key => baseGearCosts.get(String(key)),
+      excludeMarketFor: key => boundTransferItems.has(String(key)),
       successRateFor: id => state.graph.recipes[id]?.successChance != null ? MAX_CRAFT_SUCCESS : undefined,
       comboSuccessRateFor: id => state.graph.recipes[id]?.comboSuccessChance != null ? MAX_COMBO_SUCCESS : undefined,
     }
@@ -922,7 +942,7 @@ function renderTransferCosts(pane, recipe, craftCount) {
   const summary = document.createElement('div'); summary.className = 'numbers transferCostSummary';
   summary.append(
     box('Altri materiali · per 1 tentativo', extraMaterialsTotal == null ? 'Incompleto' : format(extraMaterialsCost) + ' Kina', extraMaterialsTotal == null ? missingExtraMaterials.size + ' prezzi mancanti · totale per ' + craftCount + ': incompleto' : 'Escluso l’oggetto da trasferire · totale per ' + craftCount + ': ' + format(extraMaterialsTotal) + ' Kina', extraMaterialsTotal == null ? 'warn' : 'accent'),
-    box('Totale con oggetto da trasferire · per 1 tentativo', totalCost == null ? 'Incompleto' : format(attempt.cost) + ' Kina', totalCost == null ? 'Include il costo craftato della fase precedente · totale per ' + craftCount + ': incompleto' : 'Include il costo craftato della fase precedente · totale per ' + craftCount + ': ' + format(totalCost) + ' Kina', totalCost == null ? 'warn' : 'accent')
+    box('Totale con oggetto da trasferire · per 1 tentativo', totalCost == null ? 'Incompleto' : format(attempt.cost) + ' Kina', totalCost == null ? 'Include il costo scelto della fase precedente · totale per ' + craftCount + ': incompleto' : 'Include il costo scelto della fase precedente · totale per ' + craftCount + ': ' + format(totalCost) + ' Kina', totalCost == null ? 'warn' : 'accent')
   );
   pane.append(summary);
 
@@ -936,12 +956,12 @@ function renderTransferCosts(pane, recipe, craftCount) {
     const tr = document.createElement('tr');
     const name = document.createElement('td'); name.className = 'material';
     const nameWrap = document.createElement('div'); nameWrap.className = 'materialName';
-    const nameText = document.createElement('span'); nameText.className = 'itemGrade' + gradeClass(row.key); nameText.textContent = nameOf(row.key) + (row.transfer ? ' · costo craftato incluso' : '');
+    const nameText = document.createElement('span'); nameText.className = 'itemGrade' + gradeClass(row.key); nameText.textContent = nameOf(row.key) + (row.transfer ? ' · costo di partenza incluso' : '');
     nameWrap.append(iconOf(row.key), nameText); name.append(nameWrap);
     const count = document.createElement('td'); count.textContent = formatAttempts(row.quantity * craftCount);
     const marketCell = document.createElement('td');
     if (row.transfer) {
-      const source = document.createElement('span'); source.className = 'sourceTag'; source.textContent = 'Prezzo mercato non usato: valorizzato craftando'; marketCell.append(source);
+      const source = document.createElement('span'); source.className = 'sourceTag'; source.textContent = boundTransferItems.has(row.key) ? 'Oggetto vincolato · costo dei trasferimenti precedenti' : row.market?.price != null && row.market.listings > 0 ? format(row.market.price) + ' Kina · ' + row.market.listings + ' annunci' : 'Nessun annuncio disponibile'; marketCell.append(source);
     } else {
       const input = document.createElement('input'); input.className = 'priceInput'; input.type = 'number'; input.min = '0'; input.step = '1';
       input.placeholder = row.market?.price == null ? (GLOBAL_VENDOR_PRICES[row.key] == null ? 'Mancante' : String(GLOBAL_VENDOR_PRICES[row.key])) : String(row.market.price);
@@ -960,7 +980,7 @@ function renderTransferCosts(pane, recipe, craftCount) {
     if (row.own.cost == null) { methodCell.className = 'missing'; methodCell.textContent = 'Prezzo mancante'; }
     else {
       methodCell.append(document.createTextNode(format(row.own.cost) + ' Kina'));
-      if (row.transfer) { const note = document.createElement('div'); note.className = 'sourceTag'; note.textContent = 'Fase precedente valorizzata craftando'; methodCell.append(note); }
+      if (row.transfer) { const note = document.createElement('div'); note.className = 'sourceTag'; note.textContent = row.own.source === 'market' ? 'Acquisto al mercato: costa meno del craft' : 'Costo craftato della fase precedente'; methodCell.append(note); }
       else if (row.own.source === 'craft' || row.own.source === 'morph') addBreakdown(methodCell, row.own);
       else { const note = document.createElement('div'); note.className = 'sourceTag'; note.textContent = row.own.source === 'npc' ? 'Comprato dal negoziante' : row.own.source === 'owned' ? 'Già posseduto' : 'Acquistato al mercato'; methodCell.append(note); }
     }
@@ -972,7 +992,7 @@ function renderTransferCosts(pane, recipe, craftCount) {
   const scroll = document.createElement('div'); scroll.className = 'tableScroll'; scroll.append(table); pane.append(scroll);
   if (missing.size) addMissingPriceInputs(pane, [...missing], 'Inserisci i prezzi mancanti dei materiali');
   const note = document.createElement('p'); note.className = 'muted';
-  note.textContent = 'Il costo parte dal True Dragon Lord craftato e include ogni passaggio precedente della linea. Le combo al 25% sono valorizzate al costo di un singolo tentativo, senza moltiplicare per quattro. Tariffe delle ricette escluse.';
+  note.textContent = 'Per il True Dragon Lord iniziale viene scelto il minore tra prezzo di acquisto al mercato e costo craftato. Il valore scelto entra nei passaggi successivi della linea. Le combo al 25% sono valorizzate al costo di un singolo tentativo, senza moltiplicare per quattro. Tariffe delle ricette escluse.';
   pane.append(note);
 }
 
@@ -1021,7 +1041,7 @@ function renderDetail() {
   quantityWrap.append(quantityLabel, quantity);
   control.append(quantityWrap);
   if (recipe.type === 'transfer') {
-    const note = document.createElement('p'); note.className = 'note'; note.textContent = 'Inserisci quanti tentativi vuoi fare. Vedi solo i materiali necessari e il loro costo; l’oggetto della fase precedente è considerato già disponibile.';
+    const note = document.createElement('p'); note.className = 'note'; note.textContent = 'Inserisci quanti tentativi vuoi fare. Vedi solo i materiali necessari e il loro costo; il True Dragon Lord iniziale usa il minore tra mercato e craft, riportato nei passaggi successivi.';
     control.append(note);
   } else {
     const modeWrap = document.createElement('fieldset'); modeWrap.className = 'materialMode';
@@ -1329,6 +1349,7 @@ export function createCostModel(graph, unitPrice, faction, isOwned = () => false
   }
 
   function marketUnit(key) {
+    if (options.excludeMarketFor?.(key)) return { cost: null, missing: [key], source: 'missing' };
     const price = unitPrice(key);
     if (price != null && Number.isFinite(price)) return { cost: price, missing: [], source: 'market' };
     const vendor = GLOBAL_VENDOR_PRICES[key];
@@ -1336,6 +1357,8 @@ export function createCostModel(graph, unitPrice, faction, isOwned = () => false
   }
 
   function ownUnit(key, trail = new Set()) {
+    const override = options.unitOverrideFor?.(key);
+    if (override) return override;
     if (isOwned(key)) return { cost: 0, missing: [], source: 'owned' };
     if (!gear.has(key) && !optimizeMaterials) return marketUnit(key);
     if (memo.has(key)) return memo.get(key);
