@@ -819,6 +819,82 @@ function renderSequenceCalculator(rootId) {
   if (total.missingSales.size) addMissingPriceInputs(pane, [...total.missingSales], 'Inserisci i prezzi mancanti dei risultati');
 }
 
+function renderTransferCosts(pane, recipe, craftCount) {
+  const faction = serverFaction() === 'Asmodian' ? 'dark' : 'light';
+  const sourceKey = String(recipe.transferFrom || '');
+  const model = createCostModel(state.graph, unitPrice, faction,
+    key => String(key) === sourceKey || localStorage.getItem(overrideKey(key)) === '0',
+    {
+      optimizeMaterials: true,
+      singleAttemptComboCrafting: true,
+      successRateFor: id => state.graph.recipes[id]?.successChance != null ? MAX_CRAFT_SUCCESS : undefined,
+      comboSuccessRateFor: id => state.graph.recipes[id]?.comboSuccessChance != null ? MAX_COMBO_SUCCESS : undefined,
+    }
+  );
+  const attempt = model.ownAttempt(recipe);
+  const missing = new Set(attempt.missing.map(String));
+  const rows = (recipe.transferFrom ? [[recipe.transferFrom, 1, 'transfer']] : []).concat(recipe.in).map(([rawKey, quantity, kind]) => {
+    const key = String(rawKey);
+    return { key, quantity: Number(quantity) || 0, kind, own: model.ownUnit(key), market: state.prices.get(key), transfer: kind === 'transfer' };
+  });
+  const totalCost = attempt.cost == null ? null : attempt.cost * craftCount;
+  const summary = document.createElement('div'); summary.className = 'numbers transferCostSummary';
+  summary.append(
+    box('Costo materiali per 1 tentativo', attempt.cost == null ? 'Incompleto' : format(attempt.cost) + ' Kina', attempt.missing.length ? attempt.missing.length + ' prezzi mancanti nei materiali necessari' : 'Include i componenti craftati al costo di un singolo tentativo', attempt.cost == null ? 'warn' : 'accent'),
+    box('Costo totale per ' + craftCount + (craftCount === 1 ? ' tentativo' : ' tentativi'), totalCost == null ? 'Incompleto' : format(totalCost) + ' Kina', 'Gli oggetti della fase precedente sono considerati già disponibili', totalCost == null ? 'warn' : 'accent')
+  );
+  pane.append(summary);
+
+  const heading = document.createElement('h3'); heading.textContent = 'Materiali e oggetti necessari'; pane.append(heading);
+  const table = document.createElement('table');
+  const head = document.createElement('thead'); const headerRow = document.createElement('tr');
+  for (const label of ['Materiale', 'Quantità', 'Mercato / unità', 'Costo scelto / unità', 'Totale']) { const th = document.createElement('th'); th.textContent = label; headerRow.append(th); }
+  head.append(headerRow); table.append(head);
+  const body = document.createElement('tbody');
+  for (const row of rows) {
+    const tr = document.createElement('tr');
+    const name = document.createElement('td'); name.className = 'material';
+    const nameWrap = document.createElement('div'); nameWrap.className = 'materialName';
+    const nameText = document.createElement('span'); nameText.className = 'itemGrade' + gradeClass(row.key); nameText.textContent = nameOf(row.key) + (row.transfer ? ' · già disponibile' : '');
+    nameWrap.append(iconOf(row.key), nameText); name.append(nameWrap);
+    const count = document.createElement('td'); count.textContent = formatAttempts(row.quantity * craftCount);
+    const marketCell = document.createElement('td');
+    if (row.transfer) {
+      const owned = document.createElement('span'); owned.className = 'sourceTag'; owned.textContent = 'Già posseduto · non serve comprarlo'; marketCell.append(owned);
+    } else {
+      const input = document.createElement('input'); input.className = 'priceInput'; input.type = 'number'; input.min = '0'; input.step = '1';
+      input.placeholder = row.market?.price == null ? (GLOBAL_VENDOR_PRICES[row.key] == null ? 'Mancante' : String(GLOBAL_VENDOR_PRICES[row.key])) : String(row.market.price);
+      const manualValue = localStorage.getItem(overrideKey(row.key)); input.value = manualValue || '';
+      input.setAttribute('aria-label', 'Prezzo manuale per ' + nameOf(row.key));
+      input.addEventListener('change', () => {
+        if (input.value === '') localStorage.removeItem(overrideKey(row.key));
+        else if (Number.isFinite(Number(input.value)) && Number(input.value) >= 0) localStorage.setItem(overrideKey(row.key), input.value);
+        renderRecommendations(); renderDetail();
+      });
+      const source = document.createElement('div'); source.className = 'sourceTag';
+      source.textContent = manualValue != null && manualValue !== '' ? 'Prezzo manuale' : row.market?.price == null ? (GLOBAL_VENDOR_PRICES[row.key] != null ? 'Negoziante Global · ' + format(GLOBAL_VENDOR_PRICES[row.key]) + ' Kina' : 'Nessun annuncio: inserisci il prezzo') : 'Mercato ' + format(row.market.price) + ' Kina · ' + (row.market.listings || 0) + ' annunci';
+      marketCell.append(input, source);
+    }
+    const methodCell = document.createElement('td');
+    if (row.own.cost == null) { methodCell.className = 'missing'; methodCell.textContent = 'Prezzo mancante'; }
+    else {
+      methodCell.append(document.createTextNode(format(row.own.cost) + ' Kina'));
+      if (row.transfer) { const note = document.createElement('div'); note.className = 'sourceTag'; note.textContent = 'Fase precedente già posseduta'; methodCell.append(note); }
+      else if (row.own.source === 'craft' || row.own.source === 'morph') addBreakdown(methodCell, row.own);
+      else { const note = document.createElement('div'); note.className = 'sourceTag'; note.textContent = row.own.source === 'npc' ? 'Comprato dal negoziante' : row.own.source === 'owned' ? 'Già posseduto' : 'Acquistato al mercato'; methodCell.append(note); }
+    }
+    const sum = document.createElement('td'); sum.textContent = row.own.cost == null ? '—' : format(row.own.cost * row.quantity * craftCount);
+    if (row.own.cost == null) sum.className = 'missing';
+    tr.append(name, count, marketCell, methodCell, sum); body.append(tr);
+  }
+  table.append(body);
+  const scroll = document.createElement('div'); scroll.className = 'tableScroll'; scroll.append(table); pane.append(scroll);
+  if (missing.size) addMissingPriceInputs(pane, [...missing], 'Inserisci i prezzi mancanti dei materiali');
+  const note = document.createElement('p'); note.className = 'muted';
+  note.textContent = 'Il costo dei componenti craftabili considera un singolo tentativo. La combo non moltiplica il costo per quattro; l’oggetto trasferito dalla fase precedente è conteggiato come già posseduto. Tariffe delle ricette escluse.';
+  pane.append(note);
+}
+
 function renderDetail() {
   const pane = $('detail');
   const recipe = state.graph?.recipes?.[state.selected];
@@ -841,9 +917,11 @@ function renderDetail() {
   const titleRow = document.createElement('div'); titleRow.className = 'titleRow';
   const title = document.createElement('h2'); title.className = 'itemGrade' + gradeClass(recipe.out); title.textContent = nameOf(recipe.out);
   titleRow.append(iconOf(recipe.out, 'large'), title);
-  const marketButton = document.createElement('button'); marketButton.className = 'marketButton'; marketButton.type = 'button'; marketButton.textContent = 'Prezzo mercato'; marketButton.setAttribute('aria-label', 'Grafico prezzo mercato di ' + nameOf(recipe.combo || recipe.out));
-  marketButton.addEventListener('click', () => openMarketModal(String(recipe.combo || recipe.out)));
-  titleRow.append(marketButton);
+  if (recipe.type !== 'transfer') {
+    const marketButton = document.createElement('button'); marketButton.className = 'marketButton'; marketButton.type = 'button'; marketButton.textContent = 'Prezzo mercato'; marketButton.setAttribute('aria-label', 'Grafico prezzo mercato di ' + nameOf(recipe.combo || recipe.out));
+    marketButton.addEventListener('click', () => openMarketModal(String(recipe.combo || recipe.out)));
+    titleRow.append(marketButton);
+  }
   const meta = document.createElement('div'); meta.className = 'detailMeta muted';
   meta.textContent = (recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' › ' + (professionLabels[recipe.p] || recipe.p || 'Crafting') + ' › ' + (categoryLabels[categoryOf(recipe)] || categoryOf(recipe)) + ' · ' + masteryLabel(recipe.ml) + ' · ' + (recipe.outq || 1) + ' per tentativo' + (recipe.type === 'transfer' ? ' · Passaggio ' + transferStageNumber(recipe) + '/5 · ' + transferLevelLabel(recipe) : recipe.safe ? ' · risultato sicuro livello 63' : recipe.successChance != null ? ' · combo livello 70' : '');
   const control = document.createElement('div'); control.className = 'controls';
@@ -853,25 +931,35 @@ function renderDetail() {
   quantity.addEventListener('change', renderDetail);
   quantityWrap.append(quantityLabel, quantity);
   control.append(quantityWrap);
-  const modeWrap = document.createElement('fieldset'); modeWrap.className = 'materialMode';
-  const modeLabel = document.createElement('legend'); modeLabel.textContent = 'Materiali di partenza';
-  const sourceChoices = document.createElement('div'); sourceChoices.className = 'sourceChoices';
-  for (const [value, label, hint] of [
-    ['optimize', 'Craftato', 'Usa craft, Odyle o mercato: sceglie il costo minore'],
-    ['market', 'Market', 'Compra direttamente tutti i materiali'],
-  ]) {
-    const choice = document.createElement('label'); choice.className = 'sourceChoice';
-    const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'materialMode'; radio.value = value; radio.checked = state.materialMode === value;
-    radio.addEventListener('change', () => { if (radio.checked) { state.materialMode = value; renderDetail(); } });
-    const text = document.createElement('span');
-    const strong = document.createElement('strong'); strong.textContent = label;
-    const small = document.createElement('small'); small.textContent = hint;
-    text.append(strong, small); choice.append(radio, text); sourceChoices.append(choice);
-  }
-  modeWrap.append(modeLabel, sourceChoices); control.append(modeWrap);
-  const note = document.createElement('p'); note.className = 'note'; note.textContent = recipe.safe ? 'Quantità = numero di craft. Questa ricetta riesce sempre, produce l’arma base vincolata e non può fare combo. La tariffa in Kina non è inclusa.' : recipe.successChance != null ? 'Quantità = numero di craft, non pezzi garantiti. Le combo usano il 25% e possono fallire: per esempio, 20 craft attivano in media 5 combo. Per True Dragon il calcolo usa la probabilità massima della professione al livello 50.' : 'Quantità = numero di craft. Le combo sono una media: al 25%, 20 craft corrispondono a 5 attivazioni. “Craftato” sceglie il metodo meno caro tra mercato, craft e trasformazione 1:1 dall’Odyle; “Market” compra tutti i materiali.';
+  if (recipe.type === 'transfer') {
+    const note = document.createElement('p'); note.className = 'note'; note.textContent = 'Inserisci quanti tentativi vuoi fare. Vedi solo i materiali necessari e il loro costo; l’oggetto della fase precedente è considerato già disponibile.';
+    control.append(note);
+  } else {
+    const modeWrap = document.createElement('fieldset'); modeWrap.className = 'materialMode';
+    const modeLabel = document.createElement('legend'); modeLabel.textContent = 'Materiali di partenza';
+    const sourceChoices = document.createElement('div'); sourceChoices.className = 'sourceChoices';
+    for (const [value, label, hint] of [
+      ['optimize', 'Craftato', 'Usa craft, Odyle o mercato: sceglie il costo minore'],
+      ['market', 'Market', 'Compra direttamente tutti i materiali'],
+    ]) {
+      const choice = document.createElement('label'); choice.className = 'sourceChoice';
+      const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'materialMode'; radio.value = value; radio.checked = state.materialMode === value;
+      radio.addEventListener('change', () => { if (radio.checked) { state.materialMode = value; renderDetail(); } });
+      const text = document.createElement('span');
+      const strong = document.createElement('strong'); strong.textContent = label;
+      const small = document.createElement('small'); small.textContent = hint;
+      text.append(strong, small); choice.append(radio, text); sourceChoices.append(choice);
+    }
+    modeWrap.append(modeLabel, sourceChoices); control.append(modeWrap);
+    const note = document.createElement('p'); note.className = 'note'; note.textContent = recipe.safe ? 'Quantità = numero di craft. Questa ricetta riesce sempre, produce l’arma base vincolata e non può fare combo. La tariffa in Kina non è inclusa.' : recipe.successChance != null ? 'Quantità = numero di craft, non pezzi garantiti. Le combo usano il 25% e possono fallire: per esempio, 20 craft attivano in media 5 combo. Per True Dragon il calcolo usa la probabilità massima della professione al livello 50.' : 'Quantità = numero di craft. Le combo sono una media: al 25%, 20 craft corrispondono a 5 attivazioni. “Craftato” sceglie il metodo meno caro tra mercato, craft e trasformazione 1:1 dall’Odyle; “Market” compra tutti i materiali.';
   control.append(note);
+  }
   pane.append(titleRow, meta, control);
+
+  if (recipe.type === 'transfer') {
+    renderTransferCosts(pane, recipe, craftCount);
+    return;
+  }
 
   const faction = serverFaction() === 'Asmodian' ? 'dark' : 'light';
   const model = createCostModel(state.graph, unitPrice, faction, key => localStorage.getItem(overrideKey(key)) === '0', {
@@ -1126,6 +1214,7 @@ export function expectedAttemptsFor(recipe, target, quantity, overrides = {}) {
 
 export function createCostModel(graph, unitPrice, faction, isOwned = () => false, options = {}) {
   const optimizeMaterials = options.optimizeMaterials === true;
+  const singleAttemptComboCrafting = options.singleAttemptComboCrafting === true;
   const byOutput = new Map();
   const byCombo = new Map();
   const gear = new Set();
@@ -1217,7 +1306,7 @@ export function createCostModel(graph, unitPrice, faction, isOwned = () => false
       const chance = resultChanceFor(route.recipe, route.combo ? 'combo' : 'normal', overrides);
       const yieldCount = route.combo ? 1 : Number(route.recipe.outq) || 1;
       if (chance <= 0) continue;
-      const expectedAttempts = 1 / (chance * yieldCount);
+      const expectedAttempts = singleAttemptComboCrafting && route.combo && Number(route.recipe.cp || 0) === 25 ? 1 : 1 / (chance * yieldCount);
       const candidate = { cost: attempt.cost * expectedAttempts, missing: [], source: 'craft', recipeId: route.id, combo: route.combo, expectedAttempts, attemptCost: attempt.cost, lines: attempt.lines };
       if (!best || candidate.cost < best.cost) best = candidate;
     }

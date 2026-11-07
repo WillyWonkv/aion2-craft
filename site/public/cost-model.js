@@ -52,6 +52,7 @@ export function expectedAttemptsFor(recipe, target, quantity, overrides = {}) {
 
 export function createCostModel(graph, unitPrice, faction, isOwned = () => false, options = {}) {
   const optimizeMaterials = options.optimizeMaterials === true;
+  const singleAttemptComboCrafting = options.singleAttemptComboCrafting === true;
   const byOutput = new Map();
   const byCombo = new Map();
   const gear = new Set();
@@ -143,7 +144,7 @@ export function createCostModel(graph, unitPrice, faction, isOwned = () => false
       const chance = resultChanceFor(route.recipe, route.combo ? 'combo' : 'normal', overrides);
       const yieldCount = route.combo ? 1 : Number(route.recipe.outq) || 1;
       if (chance <= 0) continue;
-      const expectedAttempts = 1 / (chance * yieldCount);
+      const expectedAttempts = singleAttemptComboCrafting && route.combo && Number(route.recipe.cp || 0) === 25 ? 1 : 1 / (chance * yieldCount);
       const candidate = { cost: attempt.cost * expectedAttempts, missing: [], source: 'craft', recipeId: route.id, combo: route.combo, expectedAttempts, attemptCost: attempt.cost, lines: attempt.lines };
       if (!best || candidate.cost < best.cost) best = candidate;
     }
