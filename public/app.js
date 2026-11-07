@@ -1,10 +1,17 @@
-import { createCostModel, expectedAttemptsFor, resultChanceFor, GLOBAL_VENDOR_PRICES } from './cost-model.js';
+import { createCostModel, GLOBAL_VENDOR_PRICES } from './cost-model.js';
 
 const $ = id => document.getElementById(id);
-const state = { graph: null, servers: [], prices: new Map(), region: 'EU', server: 11303, mode: 'crafting', profession: 'blacksmithing', category: 'all', selected: null, target: 'combo', materialMode: 'optimize', fetchedAt: null };
+const state = { graph: null, servers: [], prices: new Map(), region: 'EU', server: 11303, mode: 'crafting', profession: 'blacksmithing', category: 'all', selected: null, materialMode: 'optimize', fetchedAt: null };
 const format = value => value == null || !Number.isFinite(value) ? '—' : Math.round(value).toLocaleString('it-IT');
 const formatAttempts = value => Number(value).toLocaleString('it-IT', { maximumFractionDigits: 2 });
 const formatPercent = value => Number(value).toLocaleString('it-IT', { maximumFractionDigits: 2 });
+const MAX_CRAFT_SUCCESS = 0.9464;
+const MAX_COMBO_SUCCESS = 0.23 / (MAX_CRAFT_SUCCESS * 0.25);
+const QUICK_PRICE_ITEMS = [
+  '610511013', '610511015', '610511014',
+  '610610013', '610610014', '610610015', '610610016',
+  '610530001', '610530005', '610530008', '610530010',
+];
 const professionLabels = { blacksmithing: 'Blacksmithing', tailoring: 'Armorsmithing', jewelcrafting: 'Handicrafting', alchemy: 'Alchemy', cooking: 'Cooking' };
 const professionHints = { blacksmithing: 'Armi e guard', tailoring: 'Armature', jewelcrafting: 'Gioielli, archi e bastoni', alchemy: 'Orbi e grimori', cooking: 'Cibo' };
 const categoryLabels = { greatsword: 'Greatsword', sword: 'Longsword', dagger: 'Dagger', mace: 'Mace', guarder: 'Guard', helmet: 'Helm', shoulder: 'Pauldrons', torso: 'Top', pants: 'Legs', gloves: 'Gloves', boots: 'Shoes', cape: 'Cloak', bow: 'Bow', staff: 'Staff', necklace: 'Necklace', earring: 'Earrings', ring: 'Ring', bracelet: 'Bracelet', magicbook: 'Spellbook', orb: 'Orb', potion: 'Potion', scroll: 'Scroll', magicstone: 'Manastone', food: 'Food', drink: 'Drink', craftresource: 'Materials', elevate: 'Upgrade' };
@@ -33,12 +40,27 @@ function iconOf(key, extraClass = '') {
   const url = item?.icon;
   if (!url) return document.createElement('span');
   const image = document.createElement('img');
-  image.className = 'itemIcon' + (extraClass ? ' ' + extraClass : '');
+  image.className = 'itemIcon' + (item?.g ? ' grade-' + item.g : '') + (extraClass ? ' ' + extraClass : '');
   image.src = url;
   image.alt = '';
   image.loading = 'lazy';
   image.onerror = () => image.remove();
   return image;
+}
+
+function renderQuickPrices() {
+  const list = $('quickPriceList');
+  if (!list || !state.graph) return;
+  list.replaceChildren(...QUICK_PRICE_ITEMS.map(key => {
+    const market = state.prices.get(key);
+    const card = document.createElement('article'); card.className = 'quickPrice';
+    const text = document.createElement('div');
+    const name = document.createElement('span'); name.className = 'quickPriceName'; name.textContent = nameOf(key); name.title = name.textContent;
+    const price = document.createElement('strong'); price.textContent = market?.price == null ? '—' : format(Number(market.price)) + ' Kina';
+    const listings = document.createElement('small'); listings.textContent = market ? (market.listings || 0) + ' annunci' : 'Prezzo non disponibile';
+    text.append(name, price, listings); card.append(iconOf(key), text);
+    return card;
+  }));
 }
 
 function recipes() {
@@ -61,15 +83,20 @@ function professionRecipes() {
 
 function visibleRecipes() {
   const query = $('search').value.trim().toLocaleLowerCase();
-  return professionRecipes().filter(([, recipe]) =>
-    (state.category === 'all' || categoryOf(recipe) === state.category) &&
-    (!query || nameOf(recipe.out).toLocaleLowerCase().includes(query))
-  );
+  return professionRecipes()
+    .filter(([, recipe]) =>
+      (state.category === 'all' || categoryOf(recipe) === state.category) &&
+      (!query || nameOf(recipe.out).toLocaleLowerCase().includes(query))
+    )
+    .sort(([, a], [, b]) =>
+      (Number(a.ml) || 0) - (Number(b.ml) || 0) ||
+      nameOf(a.out).localeCompare(nameOf(b.out), 'en') ||
+      Number(Boolean(a.safe)) - Number(Boolean(b.safe))
+    );
 }
 
 function chooseFirst() {
   state.selected = visibleRecipes()[0]?.[0] || null;
-  state.target = state.graph?.recipes?.[state.selected]?.combo ? 'combo' : 'normal';
   renderResults();
   renderDetail();
 }
@@ -162,17 +189,12 @@ function renderResults() {
     sub.textContent = (categoryLabels[categoryOf(recipe)] || 'Materiali') + ' · ' + masteryLabel(recipe.ml) + (recipe.safe ? ' · Sicuro 100% (vincolato)' : recipe.successChance != null ? ' · Con combo e rischio' : '');
     text.append(title, sub);
     button.append(icon, text);
-    button.addEventListener('click', () => { state.selected = id; state.target = recipe.combo ? 'combo' : 'normal'; renderResults(); renderDetail(); });
+    button.addEventListener('click', () => { state.selected = id; renderResults(); renderDetail(); });
     list.append(button);
   }
 }
 
 function overrideKey(itemKey) { return 'aion2craft:' + state.server + ':' + itemKey; }
-function chanceKey(recipeId, kind) { return 'aion2craft:chance:' + recipeId + ':' + kind; }
-function chanceOverride(recipeId, kind) {
-  const saved = localStorage.getItem(chanceKey(recipeId, kind));
-  return saved == null ? undefined : Number(saved) / 100;
-}
 function unitPrice(itemKey) {
   const saved = localStorage.getItem(overrideKey(itemKey));
   if (saved != null && saved !== '') return Number(saved);
@@ -252,11 +274,13 @@ function renderDetail() {
     pane.append(title, note);
     return;
   }
-  const desired = Math.max(1, Math.min(9999, Number($('desiredQuantity')?.value) || 1));
-  if (!recipe.combo) state.target = 'normal';
-  const chanceOverrides = { successChance: chanceOverride(state.selected, 'success'), comboSuccessChance: chanceOverride(state.selected, 'combo') };
-  const expectedAttempts = expectedAttemptsFor(recipe, state.target, desired, chanceOverrides);
-  const resultChance = resultChanceFor(recipe, state.target, chanceOverrides);
+  const craftCount = Math.max(1, Math.min(9999, Number($('craftQuantity')?.value) || 1));
+  const comboRate = recipe.combo ? Number(recipe.cp || 0) / 100 : 0;
+  const expectedComboActivations = craftCount * comboRate;
+  const craftSuccessRate = recipe.successChance != null && !recipe.safe ? MAX_CRAFT_SUCCESS : 1;
+  const comboSuccessRate = recipe.comboSuccessChance != null && !recipe.safe ? MAX_COMBO_SUCCESS : 1;
+  const expectedComboResults = recipe.combo ? expectedComboActivations * craftSuccessRate * comboSuccessRate : 0;
+  const expectedOutput = recipe.combo ? expectedComboResults : craftCount * (Number(recipe.outq) || 1);
   pane.replaceChildren();
   const titleRow = document.createElement('div'); titleRow.className = 'titleRow';
   const title = document.createElement('h2'); title.textContent = nameOf(recipe.out);
@@ -265,8 +289,8 @@ function renderDetail() {
   meta.textContent = (recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' › ' + (professionLabels[recipe.p] || recipe.p || 'Crafting') + ' › ' + (categoryLabels[categoryOf(recipe)] || categoryOf(recipe)) + ' · ' + masteryLabel(recipe.ml) + ' · ' + (recipe.outq || 1) + ' per tentativo' + (recipe.safe ? ' · craft sicuro' : recipe.successChance != null ? ' · craft con combo e rischio' : '');
   const control = document.createElement('div'); control.className = 'controls';
   const quantityWrap = document.createElement('div');
-  const quantityLabel = document.createElement('label'); quantityLabel.htmlFor = 'desiredQuantity'; quantityLabel.textContent = 'Quantità desiderata';
-  const quantity = document.createElement('input'); quantity.id = 'desiredQuantity'; quantity.type = 'number'; quantity.min = '1'; quantity.max = '9999'; quantity.value = String(desired);
+  const quantityLabel = document.createElement('label'); quantityLabel.htmlFor = 'craftQuantity'; quantityLabel.textContent = 'Quantità da craftare';
+  const quantity = document.createElement('input'); quantity.id = 'craftQuantity'; quantity.type = 'number'; quantity.min = '1'; quantity.max = '9999'; quantity.value = String(craftCount);
   quantity.addEventListener('change', renderDetail);
   quantityWrap.append(quantityLabel, quantity);
   control.append(quantityWrap);
@@ -279,54 +303,34 @@ function renderDetail() {
       const option = document.createElement('option'); option.value = id; option.textContent = optionRecipe.safe ? 'Sicuro · arma base vincolata' : 'Con combo · può fallire'; route.append(option);
     }
     route.value = state.selected;
-    route.addEventListener('change', () => { state.selected = route.value; state.target = state.graph.recipes[route.value].combo ? 'combo' : 'normal'; renderResults(); renderDetail(); });
+    route.addEventListener('change', () => { state.selected = route.value; renderResults(); renderDetail(); });
     routeWrap.append(routeLabel, route); control.append(routeWrap);
   }
-  if (recipe.combo) {
-    const targetWrap = document.createElement('div');
-    const targetLabel = document.createElement('label'); targetLabel.htmlFor = 'targetResult'; targetLabel.textContent = 'Risultato desiderato';
-    const target = document.createElement('select'); target.id = 'targetResult';
-    for (const [value, label] of [['combo', 'Splendent'], ['normal', 'Normale']]) {
-      const option = document.createElement('option'); option.value = value; option.textContent = label; target.append(option);
-    }
-    target.value = state.target;
-    target.addEventListener('change', () => { state.target = target.value; renderDetail(); });
-    targetWrap.append(targetLabel, target); control.append(targetWrap);
+  const modeWrap = document.createElement('fieldset'); modeWrap.className = 'materialMode';
+  const modeLabel = document.createElement('legend'); modeLabel.textContent = 'Materiali di partenza';
+  const sourceChoices = document.createElement('div'); sourceChoices.className = 'sourceChoices';
+  for (const [value, label, hint] of [
+    ['optimize', 'Craftato', 'Usa craft, Odyle o mercato: sceglie il costo minore'],
+    ['market', 'Market', 'Compra direttamente tutti i materiali'],
+  ]) {
+    const choice = document.createElement('label'); choice.className = 'sourceChoice';
+    const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'materialMode'; radio.value = value; radio.checked = state.materialMode === value;
+    radio.addEventListener('change', () => { if (radio.checked) { state.materialMode = value; renderDetail(); } });
+    const text = document.createElement('span');
+    const strong = document.createElement('strong'); strong.textContent = label;
+    const small = document.createElement('small'); small.textContent = hint;
+    text.append(strong, small); choice.append(radio, text); sourceChoices.append(choice);
   }
-  if (recipe.successChance != null && !recipe.safe) {
-    for (const [kind, label, fallback] of [['success', 'Successo craft %', recipe.successChance], ['combo', 'Successo combo %', recipe.comboSuccessChance]]) {
-      const wrap = document.createElement('div');
-      const fieldLabel = document.createElement('label'); fieldLabel.textContent = label;
-      const field = document.createElement('input'); field.type = 'number'; field.min = '1'; field.max = '100'; field.step = '0.01';
-      field.value = String((chanceOverride(state.selected, kind) ?? fallback) * 100);
-      field.setAttribute('aria-label', label);
-      field.addEventListener('change', () => {
-        const value = Number(field.value);
-        if (Number.isFinite(value) && value > 0 && value <= 100) localStorage.setItem(chanceKey(state.selected, kind), String(value));
-        else localStorage.removeItem(chanceKey(state.selected, kind));
-        renderDetail();
-      });
-      wrap.append(fieldLabel, field); control.append(wrap);
-    }
-  }
-  const modeWrap = document.createElement('div'); modeWrap.className = 'materialMode';
-  const modeLabel = document.createElement('label'); modeLabel.htmlFor = 'materialMode'; modeLabel.textContent = 'Materiali di partenza';
-  const mode = document.createElement('select'); mode.id = 'materialMode';
-  for (const [value, label] of [['optimize', 'Prezzo più basso'], ['market', 'Compra al mercato']]) {
-    const option = document.createElement('option'); option.value = value; option.textContent = label; mode.append(option);
-  }
-  mode.value = state.materialMode;
-  mode.addEventListener('change', () => { state.materialMode = mode.value; renderDetail(); });
-  modeWrap.append(modeLabel, mode); control.append(modeWrap);
-  const note = document.createElement('p'); note.className = 'note'; note.textContent = recipe.safe ? 'Questa ricetta riesce sempre, produce l’arma base vincolata e non può fare combo. I pezzi precedenti della linea si craftano. La tariffa in Kina non è inclusa.' : recipe.successChance != null ? 'Il 25% è l’attivazione della combo dopo il successo del craft; anche la combo può fallire. Le due percentuali sopra partono dai valori Global alla maestria minima: sostituiscile con quelle mostrate nel tuo gioco. I fallimenti dei craft precedenti e la tariffa in Kina non sono inclusi.' : 'La quantità indica i pezzi che vuoi ottenere; i tentativi sono stimati dalla probabilità della combo. Per i materiali il prezzo più basso confronta mercato, craft e trasformazione 1:1 dall’Odyle della stessa qualità. I pezzi precedenti della linea si craftano. Fallimenti e tariffa in Kina non sono inclusi.';
+  modeWrap.append(modeLabel, sourceChoices); control.append(modeWrap);
+  const note = document.createElement('p'); note.className = 'note'; note.textContent = recipe.safe ? 'La quantità indica quanti craft vuoi eseguire. Questa ricetta riesce sempre, produce l’arma base vincolata e non può fare combo. La tariffa in Kina non è inclusa.' : recipe.successChance != null ? 'La quantità indica quanti craft vuoi eseguire. Le combo attese usano il 25%: per esempio, 20 craft attivano in media 5 combo. Per i True Dragon il calcolo usa automaticamente la probabilità massima della professione al livello 50.' : 'La quantità indica quanti craft vuoi eseguire. Le combo attese sono una media: con il 25%, 20 craft corrispondono a 5 combo. Per i materiali, Craftato confronta mercato, craft e trasformazione 1:1 dall’Odyle.';
   control.append(note);
   pane.append(titleRow, meta, control);
 
   const faction = serverFaction() === 'Asmodian' ? 'dark' : 'light';
   const model = createCostModel(state.graph, unitPrice, faction, key => localStorage.getItem(overrideKey(key)) === '0', {
     optimizeMaterials: state.materialMode === 'optimize',
-    successRateFor: id => chanceOverride(id, 'success'),
-    comboSuccessRateFor: id => chanceOverride(id, 'combo'),
+    successRateFor: id => state.graph.recipes[id]?.successChance != null ? MAX_CRAFT_SUCCESS : undefined,
+    comboSuccessRateFor: id => state.graph.recipes[id]?.comboSuccessChance != null ? MAX_COMBO_SUCCESS : undefined,
   });
   const marketAttempt = model.marketAttempt(recipe);
   const ownAttempt = model.ownAttempt(recipe);
@@ -335,25 +339,25 @@ function renderDetail() {
   const ingredients = recipe.transferFrom ? [[recipe.transferFrom, 1, 'transfer']].concat(recipe.in) : recipe.in;
   for (const ingredient of ingredients) {
     const key = String(ingredient[0]);
-    const count = Number(ingredient[1]) * expectedAttempts;
+    const count = Number(ingredient[1]) * craftCount;
     rows.push({ key, count, buy: model.marketUnit(key), own: model.ownUnit(key), market: state.prices.get(key), transfer: ingredient[2] === 'transfer' });
   }
-  const targetItem = state.target === 'combo' ? String(recipe.combo) : String(recipe.out);
+  const targetItem = String(recipe.combo || recipe.out);
   const output = state.prices.get(targetItem);
-  const sale = recipe.bound || output?.price == null ? null : Number(output.price) * desired;
+  const sale = recipe.bound || output?.price == null ? null : Number(output.price) * expectedOutput;
   const missingBuyNames = marketAttempt.missing.map(nameOf);
   const missingBuyNote = missingBuyNames.length === 1
     ? 'Manca il prezzo di ' + missingBuyNames[0] + '; inseriscilo nella tabella sotto'
     : missingBuyNames.length + ' componenti senza prezzo: ' + missingBuyNames.join(', ');
   const numbers = document.createElement('div'); numbers.className = 'numbers';
   numbers.append(
-    box('Comprando i componenti', marketAttempt.cost == null ? 'Prezzo mancante' : format(marketAttempt.cost * expectedAttempts) + ' Kina', marketAttempt.missing.length ? missingBuyNote : 'Per ' + desired + ' ' + (state.target === 'combo' ? 'Splendent' : 'normali'), marketAttempt.cost == null ? 'warn' : ''),
-    box('Craftato', ownAttempt.cost == null ? 'Incompleto' : format(ownAttempt.cost * expectedAttempts) + ' Kina', ownAttempt.missing.length ? ownAttempt.missing.length + ' prezzi mancanti' : fallbackItems.size ? fallbackItems.size + ' pezzi comprati perché la loro catena non è valutabile' : state.materialMode === 'optimize' ? 'Materiali al percorso meno caro, pezzi precedenti craftati' : 'Materiali comprati, pezzi precedenti craftati', ownAttempt.cost == null ? 'warn' : 'accent'),
-    box('Tentativi medi richiesti', formatAttempts(expectedAttempts), formatPercent(resultChance * 100) + '% di probabilità per tentativo' + (recipe.safe ? ' · garantito' : ' · media, non garantito')),
-    box('Prezzo dei pezzi sul mercato', sale == null ? '—' : format(sale) + ' Kina', recipe.bound ? 'Risultato vincolato: non vendibile' : output ? (output.listings || 0) + ' annunci · ' + desired + ' pezzi' : 'Nessun annuncio')
+    box('Comprando i componenti', marketAttempt.cost == null ? 'Prezzo mancante' : format(marketAttempt.cost * craftCount) + ' Kina', marketAttempt.missing.length ? missingBuyNote : 'Materiali per ' + craftCount + ' craft', marketAttempt.cost == null ? 'warn' : ''),
+    box('Craftato', ownAttempt.cost == null ? 'Incompleto' : format(ownAttempt.cost * craftCount) + ' Kina', ownAttempt.missing.length ? ownAttempt.missing.length + ' prezzi mancanti' : fallbackItems.size ? fallbackItems.size + ' pezzi comprati perché la loro catena non è valutabile' : state.materialMode === 'optimize' ? 'Materiali al percorso meno caro, pezzi precedenti craftati' : 'Materiali comprati al market', ownAttempt.cost == null ? 'warn' : 'accent'),
+    box(recipe.combo ? 'Combo al 25% attese' : 'Oggetti attesi', recipe.combo ? formatAttempts(expectedComboActivations) : formatAttempts(expectedOutput), recipe.combo ? (recipe.successChance != null && !recipe.safe ? formatAttempts(expectedComboResults) + ' oggetti combo riusciti stimati considerando i fallimenti' : craftCount + ' craft × ' + formatPercent(comboRate * 100) + '% · valore medio') : 'Da ' + craftCount + ' craft'),
+    box(recipe.combo ? 'Valore delle combo riuscite' : 'Valore atteso sul mercato', sale == null ? '—' : format(sale) + ' Kina', recipe.bound ? 'Risultato vincolato: non vendibile' : output ? (output.listings || 0) + ' annunci · ' + formatAttempts(expectedOutput) + ' pezzi riusciti attesi' : 'Nessun annuncio')
   );
   pane.append(numbers);
-  const heading = document.createElement('h3'); heading.textContent = recipe.transferFrom ? 'Equipaggiamento e materiali medi necessari' : 'Materiali medi necessari'; pane.append(heading);
+  const heading = document.createElement('h3'); heading.textContent = recipe.transferFrom ? 'Equipaggiamento e materiali necessari' : 'Materiali necessari'; pane.append(heading);
   const table = document.createElement('table');
   const head = document.createElement('thead');
   const trh = document.createElement('tr');
@@ -412,11 +416,11 @@ async function loadPrices(preserveOld = false) {
     state.fetchedAt = result.retrieved_at;
     const time = new Date(state.fetchedAt).toLocaleString('it-IT');
     status(state.prices.size + ' oggetti dal mercato · consultazione ' + time + ' · prezzi minimi degli annunci', 'good');
-    renderResults(); renderDetail();
+    renderQuickPrices(); renderResults(); renderDetail();
   } catch (error) {
     if (!preserveOld) state.prices = new Map();
     status((preserveOld ? 'Aggiornamento non riuscito; restano i prezzi precedenti: ' : 'Prezzi non disponibili: ') + error.message + '. Puoi inserire prezzi manuali nelle ricette.', 'error');
-    renderResults(); renderDetail();
+    renderQuickPrices(); renderResults(); renderDetail();
   } finally { $('reload').disabled = false; }
 }
 
@@ -427,7 +431,7 @@ async function init() {
   const saved = Number(localStorage.getItem('aion2craft:server'));
   if (state.servers.some(server => server.server_id === saved)) state.server = saved;
   state.region = state.servers.find(server => server.server_id === state.server)?.region || 'EU';
-  fillRegions(); fillServers(); fillModes(); fillProfessions(); fillCategories(); chooseFirst();
+  fillRegions(); fillServers(); fillModes(); fillProfessions(); fillCategories(); renderQuickPrices(); chooseFirst();
   await loadPrices();
 }
 
