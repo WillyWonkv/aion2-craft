@@ -28,7 +28,7 @@ Non serve `npm install`. Il server ascolta solo sul tuo PC (`127.0.0.1`); per le
 ## Struttura del repository
 
 - `public/` e `functions/`: sorgenti pubblicate da Cloudflare Pages.
-- `price-collector/` nella radice: Worker pianificato ogni 5 minuti; i passaggi per collegare D1 e pubblicarlo sono in `../price-collector/README.md`.
+- `price-collector/` nella radice: Worker pianificato ogni minuto; conserva 24 ore di snapshot D1. Il sito aggiorna i prezzi al minuto e mostra 24 ore di storico; i passaggi per collegare D1 e pubblicarlo sono in `../price-collector/README.md`.
 - `Aion2-Craft.cmd` e gli script nella radice: avvio e generazione del file singolo locale.
 
 ## Pubblicazione facoltativa su Cloudflare Pages

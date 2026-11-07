@@ -34,7 +34,7 @@ $html = @'
     .recommendations{margin:0 0 22px}.recommendations h2{font-size:17px;margin:0 0 4px}.recommendations>p{color:#8fa2ba;font-size:12px;margin:0 0 11px}.recommendationList{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:10px}.recommendationCard{position:relative;min-width:0;padding:13px;text-align:left;color:#eef2fc;border:1px solid #31506a;border-radius:15px;background:linear-gradient(145deg,#15263a,#101a29);box-shadow:inset 0 1px #ffffff08}.recommendationCard:hover{border-color:#73c8f4;background:linear-gradient(145deg,#1a3048,#122238);transform:translateY(-1px)}.recommendationHead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:9px}.recommendationHead .itemIcon{width:38px;height:38px}.recommendationText{min-width:0}.recommendationText strong,.recommendationText small{display:block}.recommendationText strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.recommendationText small{margin-top:3px;color:#8fa2ba;font-size:10px}.recommendationRank{align-self:start;border:1px solid #42627e;border-radius:999px;padding:3px 6px;color:#9bcdea;background:#102235;font-size:10px}.recommendationGainLabel{display:block;margin-top:12px;color:#8fa2ba;font-size:10px;text-transform:uppercase;letter-spacing:.05em}.recommendationGain{display:block;margin-top:2px;color:#7ce6a9;font-size:20px}.recommendationDetails{display:block;margin-top:4px;color:#9babc0;font-size:10px;line-height:1.35}.recommendationEmpty{grid-column:1/-1;margin:0;padding:14px;border:1px dashed #34465d;border-radius:13px;color:#8fa2ba;background:#111b2a}
     .layout{display:grid;grid-template-columns:minmax(290px,390px) minmax(0,1fr);gap:20px;align-items:start}.panel{background:#161f30;border:1px solid #2a3950;border-radius:20px;overflow:hidden}.panelHead{padding:20px 20px 14px;border-bottom:1px solid #2a3950}.panelHead h2{font-size:19px;margin:0 0 12px}.panelHead .search{margin-bottom:12px}.panelHead .filters{display:flex;gap:7px;flex-wrap:wrap}.chip{border:1px solid #3a4b63;background:#1a2739;color:#cbd6e7;padding:7px 10px;border-radius:999px;font-size:12px}.chip.active{background:#83cfff;color:#0b192a;border-color:#83cfff;font-weight:800}
     .menu{display:flex;gap:8px;flex-wrap:wrap;padding:4px 0 15px}.menu button{border:1px solid #34465d;background:#172437;color:#c4d3e7;border-radius:12px;padding:10px 13px;white-space:nowrap;text-align:left}.menu button.active{background:#254565;border-color:#79c7f8;color:#fff}.menu button strong{display:block;font-size:13px}.menu button small{display:block;color:#9fb2c9;font-size:11px;margin-top:3px}.categoryMenu{display:flex;gap:7px;flex-wrap:wrap;overflow:visible;padding:2px 0 5px;scrollbar-width:none}.categoryMenu button{border:1px solid #3a4b63;background:#1a2739;color:#cbd6e7;padding:7px 10px;border-radius:999px;font-size:12px;white-space:nowrap}.categoryMenu button.active{background:#83cfff;color:#0b192a;border-color:#83cfff;font-weight:800}
-    .results{overflow:visible}.result{display:flex;align-items:center;gap:12px;width:100%;background:transparent;color:inherit;text-align:left;border:0;border-bottom:1px solid #26364a;padding:12px 20px}.result:hover,.result.active{background:#223349}.result strong{display:block;font-size:14px;line-height:1.4}.result span{display:block;color:#9eafc6;font-size:12px;margin-top:4px}.empty{color:#9eafc6;padding:22px}.itemGrade.grade-11{color:#d5d8db}.itemGrade.grade-21{color:#48c768}.itemGrade.grade-31{color:#45a8ed}.itemGrade.grade-41{color:#dfb632}.itemGrade.grade-71{color:#f06b72}.itemIcon{width:36px;height:36px;flex:none;object-fit:contain;border:1px solid #48515b;border-radius:9px;background:radial-gradient(circle at 50% 38%,#34383c,#141719 72%);padding:3px;box-shadow:inset 0 0 10px #0009}.itemIcon.grade-11{border-color:#666d73;background:radial-gradient(circle at 50% 38%,#3c4145,#171a1c 72%)}.itemIcon.grade-21{border-color:#257d39;background:radial-gradient(circle at 50% 38%,#153f20,#09170d 72%);box-shadow:inset 0 0 10px #020a0499,0 0 7px #2aa84a2b}.itemIcon.grade-31{border-color:#287aa9;background:radial-gradient(circle at 50% 38%,#17496a,#091c2b 72%);box-shadow:inset 0 0 10px #030d1599,0 0 7px #2e9edc30}.itemIcon.grade-41{border-color:#9b7a16;background:radial-gradient(circle at 50% 38%,#594714,#211b08 72%);box-shadow:inset 0 0 10px #100c0299,0 0 7px #d3a91f30}.itemIcon.grade-71{border-color:#a63e45;background:radial-gradient(circle at 50% 38%,#60242a,#240c0f 72%);box-shadow:inset 0 0 10px #16040699,0 0 7px #dd4c5630}.itemIcon.large{width:46px;height:46px}.titleRow{display:flex;align-items:center;gap:12px}.materialName{display:flex;align-items:center;gap:9px}.materialName .itemIcon{width:29px;height:29px}.modeMenu{display:flex;gap:10px;margin:0 0 16px}.modeMenu button{border:1px solid #39516b;background:#18283e;color:#c6d7eb;border-radius:12px;padding:10px 16px;font-weight:750}.modeMenu button.active{background:#88cfff;color:#0b192a;border-color:#88cfff}
+    .results{overflow:visible}.result{display:flex;align-items:center;gap:12px;width:100%;background:transparent;color:inherit;text-align:left;border:0;border-bottom:1px solid #26364a;padding:12px 20px}.result:hover,.result.active{background:#223349}.resultIcons{display:flex;align-items:center;gap:4px;flex:none}.resultIcons .itemIcon:first-child{width:34px;height:34px}.resultIcons .itemIcon:last-child:not(:first-child){width:25px;height:25px;padding:2px;border-radius:7px}.resultIconArrow,.resultNameArrow{flex:none;color:#a8b8cb;font-size:13px}.resultText{min-width:0;flex:1}.resultTitleLine{display:flex;align-items:center;gap:6px;min-width:0}.resultTitleLine strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:1.4}.resultTitleLine .resultComboName{flex:1;color:inherit}.resultMeta{display:block;color:#9eafc6;font-size:11px;margin-top:4px}.empty{color:#9eafc6;padding:22px}.itemGrade.grade-11{color:#d5d8db}.itemGrade.grade-21{color:#48c768}.itemGrade.grade-31{color:#45a8ed}.itemGrade.grade-41{color:#dfb632}.itemGrade.grade-71{color:#f06b72}.itemIcon{width:36px;height:36px;flex:none;object-fit:contain;border:1px solid #48515b;border-radius:9px;background:radial-gradient(circle at 50% 38%,#34383c,#141719 72%);padding:3px;box-shadow:inset 0 0 10px #0009}.itemIcon.grade-11{border-color:#666d73;background:radial-gradient(circle at 50% 38%,#3c4145,#171a1c 72%)}.itemIcon.grade-21{border-color:#257d39;background:radial-gradient(circle at 50% 38%,#153f20,#09170d 72%);box-shadow:inset 0 0 10px #020a0499,0 0 7px #2aa84a2b}.itemIcon.grade-31{border-color:#287aa9;background:radial-gradient(circle at 50% 38%,#17496a,#091c2b 72%);box-shadow:inset 0 0 10px #030d1599,0 0 7px #2e9edc30}.itemIcon.grade-41{border-color:#9b7a16;background:radial-gradient(circle at 50% 38%,#594714,#211b08 72%);box-shadow:inset 0 0 10px #100c0299,0 0 7px #d3a91f30}.itemIcon.grade-71{border-color:#a63e45;background:radial-gradient(circle at 50% 38%,#60242a,#240c0f 72%);box-shadow:inset 0 0 10px #16040699,0 0 7px #dd4c5630}.itemIcon.large{width:46px;height:46px}.titleRow{display:flex;align-items:center;gap:12px}.materialName{display:flex;align-items:center;gap:9px}.materialName .itemIcon{width:29px;height:29px}.modeMenu{display:flex;gap:10px;margin:0 0 16px}.modeMenu button{border:1px solid #39516b;background:#18283e;color:#c6d7eb;border-radius:12px;padding:10px 16px;font-weight:750}.modeMenu button.active{background:#88cfff;color:#0b192a;border-color:#88cfff}
     .detail{padding:24px}.detail h2{font-size:25px;letter-spacing:-.025em;margin:0 0 9px}.muted{color:#9eafc6}.detailMeta{font-size:13px;margin-bottom:22px}.numbers{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin:20px 0}.number{background:#101b2a;border:1px solid #2c4058;border-radius:14px;padding:15px}.number span{display:block;color:#9eafc6;font-size:12px}.number strong{display:block;font-size:23px;margin-top:6px}.number small{display:block;color:#9eafc6;margin-top:5px}.number.accent strong{color:#9bdcff}.number.warn strong{color:#ffc8a6}.number.wide,.number.profitResult{grid-column:1/-1}.number.profitResult.gain,.number.outcomeProfit.gain{border-color:#2f7050;background:#10271f}.number.profitResult.gain strong,.number.outcomeProfit.gain strong{color:#7ce6a9}.number.profitResult.loss,.number.outcomeProfit.loss{border-color:#764b4b;background:#291b20}.number.profitResult.loss strong,.number.outcomeProfit.loss strong{color:#ff9e9e}.tableScroll{overflow-x:auto}.tableScroll table{min-width:720px}.craftBreakdown{margin-top:7px}.craftBreakdown summary{cursor:pointer;color:#9bdcff;font-size:12px}.craftBreakdown ul{padding-left:17px;margin:7px 0;color:#b6c6da;font-size:12px;line-height:1.5}.craftBreakdown li{margin:3px 0}.fallbackNote{color:#ffc8a6;font-size:11px;margin-top:5px}.missingPrices{margin-top:20px;padding:15px;border:1px solid #6c4d45;border-radius:13px;background:#2b252a}.missingPrices h3{margin:0 0 7px}.missingPriceRow{display:flex;align-items:center;gap:10px;margin-top:9px}.missingPriceRow label{margin:0;flex:1;text-transform:none;letter-spacing:0}.missingPriceRow input{width:130px}
     .controls{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:15px}.controls>div{width:150px}.controls>.materialMode{width:270px;margin:0;padding:0;border:0}.controls .note{color:#9eafc6;font-size:12px;max-width:520px}.materialMode legend{color:#aebbd0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px}.sourceChoices{display:grid;gap:7px}.sourceChoice{display:flex;align-items:center;gap:10px;margin:0;padding:10px 12px;border:1px solid #35445a;border-radius:11px;background:#0f1726;color:#eef2fc;text-transform:none;letter-spacing:0;cursor:pointer}.sourceChoice:has(input:checked){border-color:#80cfff;background:#172b42;box-shadow:0 0 0 2px #80cfff18}.sourceChoice input{width:17px;height:17px;margin:0;accent-color:#80cfff;box-shadow:none}.sourceChoice span{min-width:0}.sourceChoice strong,.sourceChoice small{display:block}.sourceChoice strong{font-size:13px}.sourceChoice small{margin-top:2px;color:#9eafc6;font-size:11px;font-weight:400;line-height:1.25}
     .calculatorIntro{margin:0 0 18px;color:#aebbd0;font-size:13px}.calculatorStage{margin:14px 0;padding:15px;border:1px solid #2c4058;border-radius:14px;background:#101b2a}.calculatorStageHead{display:flex;align-items:center;gap:10px;margin-bottom:12px}.calculatorStageHead strong{font-size:15px}.calculatorStageHead small{display:block;color:#9eafc6;font-size:11px;margin-top:3px}.calculatorStageInputs{display:grid;grid-template-columns:repeat(3,minmax(110px,1fr));gap:10px}.calculatorStageInputs label{font-size:10px}.calculatorStageInputs input{padding:9px}.calculatorStageCost{margin-top:10px;color:#9eafc6;font-size:12px}.calculatorTotals{margin-top:18px}.calculatorNote{color:#9eafc6;font-size:12px;line-height:1.5;margin:12px 0 0}
@@ -82,7 +82,7 @@ const MAX_CRAFT_SUCCESS = 0.9464;
 const MAX_COMBO_SUCCESS = 0.23 / (MAX_CRAFT_SUCCESS * 0.25);
 const MARKET_TAX_RATE = 0.10;
 const MANUAL_REFRESH_COOLDOWN_MS = 20_000;
-const AUTO_REFRESH_INTERVAL_MS = 5 * 60_000;
+const AUTO_REFRESH_INTERVAL_MS = 60_000;
 const netSale = value => value == null ? null : Number(value) * (1 - MARKET_TAX_RATE);
 let manualRefreshAllowedAt = 0;
 let refreshCountdownTimer = null;
@@ -151,7 +151,7 @@ function renderQuickPrices() {
   }));
 }
 
-const HISTORY_LIMIT = 90 * 24 * 60 * 60 * 1000;
+const HISTORY_LIMIT = 24 * 60 * 60 * 1000;
 function priceHistoryKey(serverId) { return 'aion2craft:priceHistory:' + serverId; }
 function savePriceHistory(prices, timestamp) {
   const key = priceHistoryKey(state.server);
@@ -213,7 +213,7 @@ function drawPriceChart(itemKey, historyOverride = null) {
   return { points, average, current: currentValue };
 }
 
-async function openMarketModal(itemKey) {
+async function openMarketModal(itemKey, forceRefresh = false) {
   const dialog = $('marketModal');
   dialog.dataset.itemKey = String(itemKey);
   $('marketModalTitle').textContent = 'Prezzo mercato · ' + nameOf(itemKey);
@@ -222,7 +222,7 @@ async function openMarketModal(itemKey) {
   if (!dialog.open) dialog.showModal();
   let points = getPriceHistory(itemKey);
   try {
-    const response = await fetch('/api/history?server=' + state.server + '&item=' + encodeURIComponent(itemKey), { cache: 'no-cache' });
+    const response = await fetch('/api/history?server=' + state.server + '&item=' + encodeURIComponent(itemKey) + (forceRefresh ? '&refresh=' + Date.now() : ''), { cache: 'no-cache' });
     const shared = await response.json();
     if (response.ok && Array.isArray(shared.points) && shared.points.length) points = shared.points;
   } catch { /* Local browser history remains available when the collector is not configured. */ }
@@ -438,16 +438,31 @@ function renderResults() {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'result' + (state.selected === id ? ' active' : '');
-    const icon = iconOf(recipe.out);
+    const icons = document.createElement('div'); icons.className = 'resultIcons';
+    icons.append(iconOf(recipe.out));
+    if (recipe.combo) {
+      const iconArrow = document.createElement('span'); iconArrow.className = 'resultIconArrow'; iconArrow.textContent = '→';
+      icons.append(iconArrow, iconOf(recipe.combo));
+    }
     const text = document.createElement('div');
+    text.className = 'resultText';
+    const titleLine = document.createElement('div'); titleLine.className = 'resultTitleLine';
     const title = document.createElement('strong'); title.className = 'itemGrade' + gradeClass(recipe.out);
     title.textContent = nameOf(recipe.out);
+    titleLine.append(title);
+    if (recipe.combo) {
+      const nameArrow = document.createElement('span'); nameArrow.className = 'resultNameArrow'; nameArrow.textContent = '→';
+      const comboName = document.createElement('strong'); comboName.className = 'resultComboName itemGrade' + gradeClass(recipe.combo); comboName.textContent = nameOf(recipe.combo); comboName.title = nameOf(recipe.combo);
+      titleLine.append(nameArrow, comboName);
+    }
+    text.append(titleLine);
     const sub = document.createElement('span');
     sub.textContent = state.mode === 'calculator'
-      ? 'Oggetto di partenza · combo: ' + nameOf(recipe.combo) + ' · ' + sequenceFor(id).length + ' passaggi'
+      ? 'Oggetto di partenza · ' + sequenceFor(id).length + ' passaggi'
       : (categoryLabels[categoryOf(recipe)] || 'Materiali') + ' · ' + masteryLabel(recipe.ml) + (recipe.safe ? ' · Sicuro · livello 63 vincolato' : recipe.successChance != null ? ' · Combo · risultato livello 70' : '');
-    text.append(title, sub);
-    button.append(icon, text);
+    sub.className = 'resultMeta';
+    text.append(sub);
+    button.append(icons, text);
     button.addEventListener('click', () => { state.selected = id; renderResults(); renderDetail(); });
     list.append(button);
   }
@@ -837,22 +852,26 @@ function renderDetail() {
   const vendor = document.createElement('p'); vendor.className = 'muted'; vendor.textContent = 'I reagenti vincolati del negoziante Global, inclusi gli indurenti per le scale del drago, usano prezzi fissi in Kina. La trasformazione da Odyle produce materiali vincolati; verifica che tu abbia la maestria richiesta.'; pane.append(vendor);
 }
 
-async function loadPrices(preserveOld = false) {
+async function loadPrices(preserveOld = false, forceRefresh = preserveOld) {
   if (!state.server) return;
   status((preserveOld ? 'Aggiornamento' : 'Caricamento') + ' prezzi di Vaizel · Europa…');
   $('reload').disabled = true;
   try {
-    const result = await getJSON('/api/prices?server=' + state.server + (preserveOld ? '&refresh=' + Date.now() : ''));
+    const result = await getJSON('/api/prices?server=' + state.server + (forceRefresh ? '&refresh=' + Date.now() : ''));
     state.prices = new Map(result.items.map(item => [String(item.item_key), { name: item.name, price: item.price, listings: item.listings }]));
     state.fetchedAt = result.retrieved_at;
     savePriceHistory(state.prices, Date.now());
     const time = new Date(state.fetchedAt).toLocaleString('it-IT');
     status(state.prices.size + ' oggetti dal mercato · consultazione ' + time + ' · prezzi minimi degli annunci', 'good');
     renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail();
+    const dialog = $('marketModal');
+    if (dialog.open && dialog.dataset.itemKey) await openMarketModal(dialog.dataset.itemKey, true);
   } catch (error) {
     if (!preserveOld) state.prices = new Map();
     status((preserveOld ? 'Aggiornamento non riuscito; restano i prezzi precedenti: ' : 'Prezzi non disponibili: ') + error.message + '. Puoi inserire prezzi manuali nelle ricette.', 'error');
     renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail();
+    const dialog = $('marketModal');
+    if (dialog.open && dialog.dataset.itemKey) await openMarketModal(dialog.dataset.itemKey, true);
   } finally {
     $('reload').disabled = false;
     updateRefreshButton();
@@ -904,7 +923,7 @@ $('reload').addEventListener('click', () => {
   startManualRefreshCooldown();
   loadPrices(true);
 });
-setInterval(() => loadPrices(true), AUTO_REFRESH_INTERVAL_MS);
+setInterval(() => loadPrices(true, false), AUTO_REFRESH_INTERVAL_MS);
 init().catch(error => status('Impossibile caricare i dati: ' + error.message + '. Riprova fra poco.', 'error'));
 
 '@

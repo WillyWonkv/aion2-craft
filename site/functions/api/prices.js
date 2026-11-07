@@ -21,7 +21,7 @@ export async function onRequestGet({ request }) {
     for (let offset = 200; offset < total; offset += 200) offsets.push(offset);
     const rest = await Promise.all(offsets.map(offset => page(server, offset)));
     const items = [first, ...rest].flatMap(result => result.items || []);
-    return Response.json({ server: Number(server), items, retrieved_at: new Date().toISOString() }, { headers: { 'Cache-Control': 'public, max-age=900' } });
+    return Response.json({ server: Number(server), items, retrieved_at: new Date().toISOString() }, { headers: { 'Cache-Control': 'public, max-age=60, s-maxage=60, stale-while-revalidate=30' } });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 502 });
   }

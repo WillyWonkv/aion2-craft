@@ -11,7 +11,7 @@ const MAX_CRAFT_SUCCESS = 0.9464;
 const MAX_COMBO_SUCCESS = 0.23 / (MAX_CRAFT_SUCCESS * 0.25);
 const MARKET_TAX_RATE = 0.10;
 const MANUAL_REFRESH_COOLDOWN_MS = 20_000;
-const AUTO_REFRESH_INTERVAL_MS = 5 * 60_000;
+const AUTO_REFRESH_INTERVAL_MS = 60_000;
 const netSale = value => value == null ? null : Number(value) * (1 - MARKET_TAX_RATE);
 let manualRefreshAllowedAt = 0;
 let refreshCountdownTimer = null;
@@ -80,7 +80,7 @@ function renderQuickPrices() {
   }));
 }
 
-const HISTORY_LIMIT = 90 * 24 * 60 * 60 * 1000;
+const HISTORY_LIMIT = 24 * 60 * 60 * 1000;
 function priceHistoryKey(serverId) { return 'aion2craft:priceHistory:' + serverId; }
 function savePriceHistory(prices, timestamp) {
   const key = priceHistoryKey(state.server);
@@ -142,7 +142,7 @@ function drawPriceChart(itemKey, historyOverride = null) {
   return { points, average, current: currentValue };
 }
 
-async function openMarketModal(itemKey) {
+async function openMarketModal(itemKey, forceRefresh = false) {
   const dialog = $('marketModal');
   dialog.dataset.itemKey = String(itemKey);
   $('marketModalTitle').textContent = 'Prezzo mercato · ' + nameOf(itemKey);
@@ -151,7 +151,7 @@ async function openMarketModal(itemKey) {
   if (!dialog.open) dialog.showModal();
   let points = getPriceHistory(itemKey);
   try {
-    const response = await fetch('/api/history?server=' + state.server + '&item=' + encodeURIComponent(itemKey), { cache: 'no-cache' });
+    const response = await fetch('/api/history?server=' + state.server + '&item=' + encodeURIComponent(itemKey) + (forceRefresh ? '&refresh=' + Date.now() : ''), { cache: 'no-cache' });
     const shared = await response.json();
     if (response.ok && Array.isArray(shared.points) && shared.points.length) points = shared.points;
   } catch { /* Local browser history remains available when the collector is not configured. */ }
@@ -367,16 +367,31 @@ function renderResults() {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'result' + (state.selected === id ? ' active' : '');
-    const icon = iconOf(recipe.out);
+    const icons = document.createElement('div'); icons.className = 'resultIcons';
+    icons.append(iconOf(recipe.out));
+    if (recipe.combo) {
+      const iconArrow = document.createElement('span'); iconArrow.className = 'resultIconArrow'; iconArrow.textContent = '→';
+      icons.append(iconArrow, iconOf(recipe.combo));
+    }
     const text = document.createElement('div');
+    text.className = 'resultText';
+    const titleLine = document.createElement('div'); titleLine.className = 'resultTitleLine';
     const title = document.createElement('strong'); title.className = 'itemGrade' + gradeClass(recipe.out);
     title.textContent = nameOf(recipe.out);
+    titleLine.append(title);
+    if (recipe.combo) {
+      const nameArrow = document.createElement('span'); nameArrow.className = 'resultNameArrow'; nameArrow.textContent = '→';
+      const comboName = document.createElement('strong'); comboName.className = 'resultComboName itemGrade' + gradeClass(recipe.combo); comboName.textContent = nameOf(recipe.combo); comboName.title = nameOf(recipe.combo);
+      titleLine.append(nameArrow, comboName);
+    }
+    text.append(titleLine);
     const sub = document.createElement('span');
     sub.textContent = state.mode === 'calculator'
-      ? 'Oggetto di partenza · combo: ' + nameOf(recipe.combo) + ' · ' + sequenceFor(id).length + ' passaggi'
+      ? 'Oggetto di partenza · ' + sequenceFor(id).length + ' passaggi'
       : (categoryLabels[categoryOf(recipe)] || 'Materiali') + ' · ' + masteryLabel(recipe.ml) + (recipe.safe ? ' · Sicuro · livello 63 vincolato' : recipe.successChance != null ? ' · Combo · risultato livello 70' : '');
-    text.append(title, sub);
-    button.append(icon, text);
+    sub.className = 'resultMeta';
+    text.append(sub);
+    button.append(icons, text);
     button.addEventListener('click', () => { state.selected = id; renderResults(); renderDetail(); });
     list.append(button);
   }
@@ -766,22 +781,26 @@ function renderDetail() {
   const vendor = document.createElement('p'); vendor.className = 'muted'; vendor.textContent = 'I reagenti vincolati del negoziante Global, inclusi gli indurenti per le scale del drago, usano prezzi fissi in Kina. La trasformazione da Odyle produce materiali vincolati; verifica che tu abbia la maestria richiesta.'; pane.append(vendor);
 }
 
-async function loadPrices(preserveOld = false) {
+async function loadPrices(preserveOld = false, forceRefresh = preserveOld) {
   if (!state.server) return;
   status((preserveOld ? 'Aggiornamento' : 'Caricamento') + ' prezzi di Vaizel · Europa…');
   $('reload').disabled = true;
   try {
-    const result = await getJSON('/api/prices?server=' + state.server + (preserveOld ? '&refresh=' + Date.now() : ''));
+    const result = await getJSON('/api/prices?server=' + state.server + (forceRefresh ? '&refresh=' + Date.now() : ''));
     state.prices = new Map(result.items.map(item => [String(item.item_key), { name: item.name, price: item.price, listings: item.listings }]));
     state.fetchedAt = result.retrieved_at;
     savePriceHistory(state.prices, Date.now());
     const time = new Date(state.fetchedAt).toLocaleString('it-IT');
     status(state.prices.size + ' oggetti dal mercato · consultazione ' + time + ' · prezzi minimi degli annunci', 'good');
     renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail();
+    const dialog = $('marketModal');
+    if (dialog.open && dialog.dataset.itemKey) await openMarketModal(dialog.dataset.itemKey, true);
   } catch (error) {
     if (!preserveOld) state.prices = new Map();
     status((preserveOld ? 'Aggiornamento non riuscito; restano i prezzi precedenti: ' : 'Prezzi non disponibili: ') + error.message + '. Puoi inserire prezzi manuali nelle ricette.', 'error');
     renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail();
+    const dialog = $('marketModal');
+    if (dialog.open && dialog.dataset.itemKey) await openMarketModal(dialog.dataset.itemKey, true);
   } finally {
     $('reload').disabled = false;
     updateRefreshButton();
@@ -833,5 +852,5 @@ $('reload').addEventListener('click', () => {
   startManualRefreshCooldown();
   loadPrices(true);
 });
-setInterval(() => loadPrices(true), AUTO_REFRESH_INTERVAL_MS);
+setInterval(() => loadPrices(true, false), AUTO_REFRESH_INTERVAL_MS);
 init().catch(error => status('Impossibile caricare i dati: ' + error.message + '. Riprova fra poco.', 'error'));

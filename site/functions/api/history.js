@@ -10,7 +10,7 @@ export async function onRequestGet({ request, env }) {
   }
   try {
     const result = await env.PRICE_HISTORY.prepare(
-      'SELECT sampled_at, json_extract(prices_json, ?) AS price FROM price_snapshots WHERE server_id = ? ORDER BY sampled_at DESC LIMIT 2016'
+      'SELECT sampled_at, json_extract(prices_json, ?) AS price FROM price_snapshots WHERE server_id = ? ORDER BY sampled_at DESC LIMIT 1440'
     ).bind('$.' + JSON.stringify(item), server).all();
     const points = [];
     for (const row of (result.results || []).reverse()) {

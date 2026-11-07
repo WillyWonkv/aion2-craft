@@ -4,7 +4,7 @@
   "compatibility_date": "2026-11-07",
   "workers_dev": true,
   "triggers": {
-    "crons": ["*/5 * * * *"]
+    "crons": ["* * * * *"]
   },
   "d1_databases": [
     {
@@ -15,6 +15,6 @@
   ],
   "vars": {
     "SERVER_IDS": "11303",
-    "RETENTION_DAYS": "30"
+    "RETENTION_DAYS": "1"
   }
 }
