@@ -45,6 +45,7 @@ $html = @'
     .creatorTag{display:inline-flex;align-items:center;gap:7px;margin-top:20px;padding:8px 13px;border:1px solid #365474;border-radius:999px;background:linear-gradient(135deg,#192b40,#1f233e);color:#aebfd5;font-size:12px}.creatorTag strong{color:#a5dcff;font-weight:800}
     .headerTags{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}.headerTags .creatorTag{margin:0;padding:11px 17px;font-size:14px;border-color:#77b9e8;box-shadow:0 0 20px #62baff24}.headerTags .creatorTag strong{font-size:17px;color:#b8e5ff}@media(max-width:600px){.top{flex-wrap:wrap}.headerTags{justify-content:flex-start;width:100%}}
     .marketActions{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex:none}.marketActions .marketButton{margin-left:0}@media(max-width:520px){.titleRow{flex-wrap:wrap}.marketActions{width:100%;flex-direction:row;flex-wrap:wrap;justify-content:flex-end}}
+    .marketModal{width:min(1080px,calc(100vw - 28px));max-height:92vh;background:radial-gradient(ellipse at top left,#172b45,#0d1727 65%);border-color:#405d7d;border-radius:22px}.marketModalHead{padding:24px 26px;align-items:flex-start;background:#14243b55}.marketHeading{display:flex;align-items:center;gap:17px;min-width:0}.marketHeading #marketItemIcon{padding-right:16px;border-right:1px solid #56708d}.marketHeading .itemIcon{width:51px;height:51px}.marketModalHead h2{font-size:clamp(18px,2.5vw,27px);letter-spacing:-.02em}.marketPriceSequence{margin:8px 0 0;color:#b6c4d8;font-size:14px;line-height:1.5}.marketModalBody{padding:22px 26px}.marketCurrent{padding:0 0 17px;border-bottom:1px solid #2b4059}.marketCurrent strong{font-size:29px}.marketChartCaption{display:flex;justify-content:space-between;color:#aebfd5;font-size:13px;margin:18px 0 10px}.marketChartCaption span:last-child{border:1px solid #486b91;border-radius:6px;padding:4px 8px;color:#b9d9ff;font-size:10px;letter-spacing:.08em}.marketChart{height:430px;background:#0d1726;border-color:#334d69}.marketTimeLabel{text-align:center;color:#aebfd5;font-size:12px;margin-top:8px}.marketChartInfo{display:flex;align-items:center;gap:15px;margin:18px 0;padding:15px 19px;border:1px solid #46617e;border-radius:14px;background:linear-gradient(120deg,#20334c,#14243b);box-shadow:inset 0 1px #ffffff09}.marketChartInfo>span{font-size:25px;color:#c2d8f6;border-right:1px solid #6c809a;padding-right:15px}.marketChartInfo p{margin:0;color:#e2ecfb;font-size:14px;font-weight:600}.marketStats{margin-top:18px}.marketExplain{margin-top:12px}@media(max-width:600px){.marketModalHead,.marketModalBody{padding:16px}.marketHeading{gap:10px}.marketHeading #marketItemIcon{padding-right:10px}.marketHeading .itemIcon{width:36px;height:36px}.marketPriceSequence{font-size:11px}.marketChart{height:310px}.marketCurrent{flex-wrap:wrap}.marketChartInfo{padding:12px}.marketChartInfo p{font-size:12px}}
   </style>
 </head>
 <body>
@@ -55,7 +56,7 @@ $html = @'
     <section class="toolbar" aria-label="Impostazioni mercato">
       <div><label for="search">Cerca ricetta</label><input id="search" type="search" placeholder="Es. Orichalcum, Ruby Necklace…"></div>
     </section>
-    <dialog id="marketModal" class="marketModal" aria-labelledby="marketModalTitle"><div class="marketModalHead"><h2 id="marketModalTitle">Storico prezzo</h2><button id="closeMarketModal" type="button" aria-label="Chiudi">Chiudi</button></div><div class="marketModalBody"><div class="marketCurrent"><strong id="marketModalCurrent">—</strong><small id="marketModalCount">Nessuna rilevazione</small></div><canvas id="marketChart" class="marketChart" aria-label="Grafico dello storico prezzi"></canvas><div class="marketLegend"><span><i></i>Prezzo sotto la media</span><span><i class="legendRed"></i>Prezzo sopra la media</span><span><i class="legendAverage"></i>Media delle rilevazioni</span></div><div id="marketStats" class="marketStats" aria-label="Statistiche del prezzo nelle ultime 24 ore"></div><div id="marketSummary" class="marketSummary equal"></div><p class="marketExplain">La linea tratteggiata indica la media dei prezzi registrati nelle ultime 24 ore. Verde: prezzo sotto la media; rosso: prezzo sopra la media. Il collector salva una rilevazione al minuto anche quando la pagina è chiusa. Quando lo storico è appena iniziato, la linea può sembrare quasi retta: diventa più dettagliata man mano che si accumulano punti. È un confronto storico, non una previsione.</p></div></dialog>
+    <dialog id="marketModal" class="marketModal" aria-labelledby="marketModalTitle"><div class="marketModalHead"><div class="marketHeading"><div id="marketItemIcon"></div><div><h2 id="marketModalTitle">Prezzo mercato</h2><p id="marketPriceSequence" class="marketPriceSequence">Prezzi osservati</p></div></div><button id="closeMarketModal" type="button" aria-label="Chiudi">Chiudi</button></div><div class="marketModalBody"><div class="marketCurrent"><strong id="marketModalCurrent">—</strong><small id="marketModalCount">Nessuna rilevazione</small></div><div class="marketChartCaption"><span>Prezzo (Kina)</span><span>ULTIME 24 ORE</span></div><canvas id="marketChart" class="marketChart" aria-label="Grafico dello storico prezzi"></canvas><div class="marketTimeLabel">Orario</div><div class="marketChartInfo"><span aria-hidden="true">ⓘ</span><p>Il prezzo resta piatto finché non arriva una nuova rilevazione diversa.</p></div><div class="marketLegend"><span><i></i>Prezzo sotto la media</span><span><i class="legendRed"></i>Prezzo sopra la media</span><span><i class="legendAverage"></i>Media delle rilevazioni</span></div><div id="marketStats" class="marketStats" aria-label="Statistiche del prezzo nelle ultime 24 ore"></div><div id="marketSummary" class="marketSummary equal"></div><p class="marketExplain">La linea tratteggiata indica la media dei prezzi registrati nelle ultime 24 ore. Verde: prezzo sotto la media; rosso: prezzo sopra la media. Il collector salva una rilevazione al minuto anche quando la pagina è chiusa. Quando lo storico è appena iniziato, la linea può sembrare quasi retta: diventa più dettagliata man mano che si accumulano punti. È un confronto storico, non una previsione.</p></div></dialog>
     <div id="status" class="status" role="status" aria-live="polite">Caricamento ricette e prezzi di Vaizel…</div>
     <section class="recommendations" aria-labelledby="recommendationsTitle"><h2 id="recommendationsTitle">Craft consigliati</h2><p>Confronta costo dei materiali e ricavo dopo la tassa del 10%. Se il dettaglio mostra una perdita, conviene valutare l’acquisto dell’oggetto finito.</p><div id="recommendationList" class="recommendationList"></div></section>
     <section class="recommendations" aria-labelledby="buyRecommendationsTitle"><h2 id="buyRecommendationsTitle">Acquisti consigliati</h2><p>Artisan's Splendent, True Dragon Lord Lv. 63 e Splendent True Dragon Lord Lv. 70: fino a 10 oggetti che costano meno comprati che craftati. Risparmio = costo craftato meno prezzo di acquisto, senza tassa di vendita.</p><div id="buyRecommendationList" class="recommendationList"></div></section>
@@ -290,7 +291,8 @@ function drawPriceChart(itemKey, historyOverride = null) {
     points.forEach((point, index) => {
       if (index % markerStep && index !== points.length - 1) return;
       context.beginPath(); context.arc(x(point.t), y(point.p), index === points.length - 1 ? 3.8 : 2, 0, Math.PI * 2);
-      context.fillStyle = index === points.length - 1 ? lineColor : '#d8e6f7'; context.fill();
+      context.fillStyle = Number(point.p) <= average ? '#51e39a' : '#ff6e76'; context.fill();
+      context.strokeStyle = '#e6f0ff'; context.lineWidth = 1; context.stroke();
       if (index === points.length - 1) { context.beginPath(); context.arc(x(point.t), y(point.p), 7, 0, Math.PI * 2); context.strokeStyle = lineColor + '88'; context.lineWidth = 1.4; context.stroke(); }
     });
   } else {
@@ -314,6 +316,11 @@ function drawPriceChart(itemKey, historyOverride = null) {
     occupied.push({ left, right: left + labelW, top, bottom: top + 23 });
     context.fillStyle = '#101d2fee'; context.strokeStyle = segment.p <= average ? '#51e39a' : '#ff6e76'; context.lineWidth = 1;
     context.beginPath(); context.roundRect(left, top, labelW, 23, 6); context.fill(); context.stroke();
+    const pointerX = Math.max(left + 8, Math.min(left + labelW - 8, center));
+    if (y(segment.p) > top + 28) {
+      context.beginPath(); context.moveTo(pointerX - 5, top + 23); context.lineTo(pointerX, top + 29); context.lineTo(pointerX + 5, top + 23);
+      context.fill(); context.stroke();
+    }
     context.fillStyle = '#edf5ff'; context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(label, left + labelW / 2, top + 12);
   }
   return { points, average, current: currentValue, min: dataMin, max: dataMax };
@@ -323,6 +330,8 @@ async function openMarketModal(itemKey, forceRefresh = false) {
   const dialog = $('marketModal');
   dialog.dataset.itemKey = String(itemKey);
   $('marketModalTitle').textContent = 'Prezzo mercato · ' + nameOf(itemKey);
+  $('marketItemIcon').replaceChildren(iconOf(itemKey));
+  $('marketPriceSequence').textContent = 'Caricamento dei prezzi osservati…';
   const current = state.prices.get(itemKey);
   $('marketModalCurrent').textContent = current?.price == null ? 'Prezzo non disponibile' : format(Number(current.price)) + ' Kina';
   if (!dialog.open) dialog.showModal();
@@ -334,6 +343,8 @@ async function openMarketModal(itemKey, forceRefresh = false) {
   } catch { /* Local browser history remains available when the collector is not configured. */ }
   if (dialog.dataset.itemKey !== String(itemKey)) return;
   modalHistory = points;
+  const changes = points.filter((point, index) => index === 0 || Number(point.p) !== Number(points[index - 1].p));
+  $('marketPriceSequence').textContent = changes.length ? 'Prezzi osservati: ' + (changes.length > 5 ? '… → ' : '') + changes.slice(-5).map(point => format(Number(point.p))).join(' → ') + ' Kina' : 'In attesa delle prime rilevazioni';
   $('marketModalCount').textContent = current ? (current.listings || 0) + ' annunci · ' + points.length + ' rilevazioni salvate' : points.length + ' rilevazioni salvate';
   requestAnimationFrame(() => drawPriceChart(itemKey, modalHistory));
   const average = points.length ? points.reduce((sum, point) => sum + point.p, 0) / points.length : current?.price == null ? null : Number(current.price);

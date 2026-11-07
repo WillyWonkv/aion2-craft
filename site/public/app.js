@@ -214,7 +214,8 @@ function drawPriceChart(itemKey, historyOverride = null) {
     points.forEach((point, index) => {
       if (index % markerStep && index !== points.length - 1) return;
       context.beginPath(); context.arc(x(point.t), y(point.p), index === points.length - 1 ? 3.8 : 2, 0, Math.PI * 2);
-      context.fillStyle = index === points.length - 1 ? lineColor : '#d8e6f7'; context.fill();
+      context.fillStyle = Number(point.p) <= average ? '#51e39a' : '#ff6e76'; context.fill();
+      context.strokeStyle = '#e6f0ff'; context.lineWidth = 1; context.stroke();
       if (index === points.length - 1) { context.beginPath(); context.arc(x(point.t), y(point.p), 7, 0, Math.PI * 2); context.strokeStyle = lineColor + '88'; context.lineWidth = 1.4; context.stroke(); }
     });
   } else {
@@ -238,6 +239,11 @@ function drawPriceChart(itemKey, historyOverride = null) {
     occupied.push({ left, right: left + labelW, top, bottom: top + 23 });
     context.fillStyle = '#101d2fee'; context.strokeStyle = segment.p <= average ? '#51e39a' : '#ff6e76'; context.lineWidth = 1;
     context.beginPath(); context.roundRect(left, top, labelW, 23, 6); context.fill(); context.stroke();
+    const pointerX = Math.max(left + 8, Math.min(left + labelW - 8, center));
+    if (y(segment.p) > top + 28) {
+      context.beginPath(); context.moveTo(pointerX - 5, top + 23); context.lineTo(pointerX, top + 29); context.lineTo(pointerX + 5, top + 23);
+      context.fill(); context.stroke();
+    }
     context.fillStyle = '#edf5ff'; context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(label, left + labelW / 2, top + 12);
   }
   return { points, average, current: currentValue, min: dataMin, max: dataMax };
@@ -247,6 +253,8 @@ async function openMarketModal(itemKey, forceRefresh = false) {
   const dialog = $('marketModal');
   dialog.dataset.itemKey = String(itemKey);
   $('marketModalTitle').textContent = 'Prezzo mercato · ' + nameOf(itemKey);
+  $('marketItemIcon').replaceChildren(iconOf(itemKey));
+  $('marketPriceSequence').textContent = 'Caricamento dei prezzi osservati…';
   const current = state.prices.get(itemKey);
   $('marketModalCurrent').textContent = current?.price == null ? 'Prezzo non disponibile' : format(Number(current.price)) + ' Kina';
   if (!dialog.open) dialog.showModal();
@@ -258,6 +266,8 @@ async function openMarketModal(itemKey, forceRefresh = false) {
   } catch { /* Local browser history remains available when the collector is not configured. */ }
   if (dialog.dataset.itemKey !== String(itemKey)) return;
   modalHistory = points;
+  const changes = points.filter((point, index) => index === 0 || Number(point.p) !== Number(points[index - 1].p));
+  $('marketPriceSequence').textContent = changes.length ? 'Prezzi osservati: ' + (changes.length > 5 ? '… → ' : '') + changes.slice(-5).map(point => format(Number(point.p))).join(' → ') + ' Kina' : 'In attesa delle prime rilevazioni';
   $('marketModalCount').textContent = current ? (current.listings || 0) + ' annunci · ' + points.length + ' rilevazioni salvate' : points.length + ' rilevazioni salvate';
   requestAnimationFrame(() => drawPriceChart(itemKey, modalHistory));
   const average = points.length ? points.reduce((sum, point) => sum + point.p, 0) / points.length : current?.price == null ? null : Number(current.price);
