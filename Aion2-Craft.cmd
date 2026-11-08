@@ -46,6 +46,7 @@ $html = @'
     .headerTags{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}.headerTags .creatorTag{margin:0;padding:11px 17px;font-size:14px;border-color:#77b9e8;box-shadow:0 0 20px #62baff24}.headerTags .creatorTag strong{font-size:17px;color:#b8e5ff}@media(max-width:600px){.top{flex-wrap:wrap}.headerTags{justify-content:flex-start;width:100%}}
     .marketActions{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex:none}.marketActions .marketButton{margin-left:0}@media(max-width:520px){.titleRow{flex-wrap:wrap}.marketActions{width:100%;flex-direction:row;flex-wrap:wrap;justify-content:flex-end}}
     .marketModal{width:min(1080px,calc(100vw - 28px));max-height:92vh;background:radial-gradient(ellipse at top left,#172b45,#0d1727 65%);border-color:#405d7d;border-radius:22px}.marketModalHead{padding:24px 26px;align-items:flex-start;background:#14243b55}.marketHeading{display:flex;align-items:center;gap:17px;min-width:0}.marketHeading #marketItemIcon{padding-right:16px;border-right:1px solid #56708d}.marketHeading .itemIcon{width:51px;height:51px}.marketModalHead h2{font-size:clamp(18px,2.5vw,27px);letter-spacing:-.02em}.marketPriceSequence{margin:8px 0 0;color:#b6c4d8;font-size:14px;line-height:1.5}.marketModalBody{padding:22px 26px}.marketCurrent{padding:0 0 17px;border-bottom:1px solid #2b4059}.marketCurrent strong{font-size:29px}.marketChartCaption{display:flex;justify-content:space-between;color:#aebfd5;font-size:13px;margin:18px 0 10px}.marketChartCaption span:last-child{border:1px solid #486b91;border-radius:6px;padding:4px 8px;color:#b9d9ff;font-size:10px;letter-spacing:.08em}.marketChart{height:430px;background:#0d1726;border-color:#334d69}.marketTimeLabel{text-align:center;color:#aebfd5;font-size:12px;margin-top:8px}.marketChartInfo{display:flex;align-items:center;gap:15px;margin:18px 0;padding:15px 19px;border:1px solid #46617e;border-radius:14px;background:linear-gradient(120deg,#20334c,#14243b);box-shadow:inset 0 1px #ffffff09}.marketChartInfo>span{font-size:25px;color:#c2d8f6;border-right:1px solid #6c809a;padding-right:15px}.marketChartInfo p{margin:0;color:#e2ecfb;font-size:14px;font-weight:600}.marketStats{margin-top:18px}.marketExplain{margin-top:12px}@media(max-width:600px){.marketModalHead,.marketModalBody{padding:16px}.marketHeading{gap:10px}.marketHeading #marketItemIcon{padding-right:10px}.marketHeading .itemIcon{width:36px;height:36px}.marketPriceSequence{font-size:11px}.marketChart{height:310px}.marketCurrent{flex-wrap:wrap}.marketChartInfo{padding:12px}.marketChartInfo p{font-size:12px}}
+    .itemLevelDescription{display:block;color:#a8c9e6;font-size:11px;line-height:1.5;margin:3px 0 5px}.itemTitleText{min-width:0}.itemTitleText h2{margin-bottom:3px}.itemTitleText .itemLevelDescription{font-size:12px}
   </style>
 </head>
 <body>
@@ -92,10 +93,11 @@ const netSale = value => value == null ? null : Number(value) * (1 - MARKET_TAX_
 const QUICK_PRICE_ITEMS = [
   '610511013', '610511015', '610511014',
   '610610013', '610610014', '610610015', '610610016',
-  '610530011',
   '610530001', '610530005', '610530008', '610530010',
+  '610620013', '610710001',
+  '610530011',
 ];
-const SEQUENCE_PROFESSIONS = ['blacksmithing', 'tailoring', 'jewelcrafting'];
+const SEQUENCE_PROFESSIONS = ['blacksmithing', 'tailoring', 'jewelcrafting', 'alchemy'];
 const SEQUENCE_CATEGORIES = new Set(['greatsword', 'sword', 'dagger', 'mace', 'guarder', 'helmet', 'shoulder', 'torso', 'pants', 'gloves', 'boots', 'cape', 'bow', 'staff', 'necklace', 'earring', 'ring', 'bracelet', 'magicbook', 'orb']);
 const professionLabels = { blacksmithing: 'Blacksmithing', tailoring: 'Armorsmithing', jewelcrafting: 'Handicrafting', alchemy: 'Alchemy', cooking: 'Cooking' };
 const professionHints = { blacksmithing: 'Armi e guard', tailoring: 'Armature', jewelcrafting: 'Gioielli, archi e bastoni', alchemy: 'Orbi e grimori', cooking: 'Cibo' };
@@ -287,16 +289,9 @@ function drawPriceChart(itemKey, historyOverride = null) {
         }
       }
     }
-    const markerStep = Math.max(1, Math.ceil(points.length / 52));
-    points.forEach((point, index) => {
-      if (index % markerStep && index !== points.length - 1) return;
-      context.beginPath(); context.arc(x(point.t), y(point.p), index === points.length - 1 ? 3.8 : 2, 0, Math.PI * 2);
-      context.fillStyle = Number(point.p) <= average ? '#51e39a' : '#ff6e76'; context.fill();
-      context.strokeStyle = '#e6f0ff'; context.lineWidth = 1; context.stroke();
-      if (index === points.length - 1) { context.beginPath(); context.arc(x(point.t), y(point.p), 7, 0, Math.PI * 2); context.strokeStyle = lineColor + '88'; context.lineWidth = 1.4; context.stroke(); }
-    });
   } else {
-    context.beginPath(); context.arc(x(points[0].t), y(points[0].p), 4.5, 0, Math.PI * 2); context.fillStyle = lineColor; context.fill();
+    context.fillStyle = '#aebfd5'; context.font = '12px system-ui'; context.textAlign = 'center';
+    context.fillText('In attesa della prossima rilevazione', pad.l + plotW / 2, pad.t + plotH / 2);
   }
   // Etichette sui tratti più ampi, evitando sovrapposizioni sui dati molto variabili.
   const plateaus = [];
@@ -423,9 +418,9 @@ function renderRecommendations() {
     const rank = document.createElement('span'); rank.className = 'recommendationRank'; rank.textContent = '#' + (index + 1);
     const head = document.createElement('div'); head.className = 'recommendationHead';
     const text = document.createElement('div'); text.className = 'recommendationText';
-    const name = document.createElement('strong'); name.className = 'itemGrade' + gradeClass(entry.targetKey); name.textContent = recommendationItemName(entry.targetKey); name.title = name.textContent;
+    const name = document.createElement('strong'); name.className = 'itemGrade' + gradeClass(entry.targetKey); name.textContent = nameOf(entry.targetKey); name.title = name.textContent;
     const route = document.createElement('small'); route.textContent = (entry.recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' · ' + (categoryLabels[categoryOf(entry.recipe)] || categoryOf(entry.recipe));
-    text.append(name, route); head.append(iconOf(entry.targetKey), text, rank);
+    text.append(name); appendItemLevel(text, entry.targetKey || entry.key); text.append(route); head.append(iconOf(entry.targetKey), text, rank);
     const gainLabel = document.createElement('span'); gainLabel.className = 'recommendationGainLabel'; gainLabel.textContent = 'Guadagno stimato';
     const gain = document.createElement('strong'); gain.className = 'recommendationGain'; gain.textContent = '+' + format(entry.profit) + ' Kina';
     const details = document.createElement('small'); details.className = 'recommendationDetails'; details.textContent = 'Componenti comprati ' + format(entry.cost) + ' → netto dopo tassa 10% ' + format(entry.netMarket) + ' · ' + entry.market.listings + ' annunci';
@@ -443,14 +438,23 @@ function renderRecommendations() {
   }));
 }
 
-function recommendationItemName(key) {
-  const name = nameOf(key);
-  if (name.startsWith('Splendent True Dragon Lord ')) return name + ' · Lv. 70';
-  if (name.startsWith('True Dragon Lord ')) return name + ' · Lv. 63';
-  const level = state.graph.items?.[String(key)]?.level;
-  return level ? name + ' · Lv. ' + level : name;
+function itemLevelDescription(key) {
+  const item = state.graph.items?.[String(key)];
+  if (item?.level) return 'Livello oggetto ' + item.level;
+  for (const [, recipe] of recipes()) {
+    if (recipe.type !== 'transfer') continue;
+    const levels = TRANSFER_LEVELS[transferStageNumber(recipe)];
+    if (!levels) continue;
+    if (String(recipe.out) === String(key)) return 'Livello oggetto ' + levels.to;
+    if (recipe.combo && String(recipe.combo) === String(key)) return 'Livello oggetto ' + levels.combo;
+    if (String(recipe.transferFrom) === String(key)) return 'Livello oggetto ' + levels.from;
+  }
+  if (/^(Splendent )?(True|Star) Dragon Lord /.test(nameOf(key))) return 'Livello oggetto ' + (nameOf(key).startsWith('Splendent ') ? 70 : 63);
+  return 'Livello oggetto non disponibile';
 }
-
+function appendItemLevel(parent, key) {
+  const level = document.createElement('small'); level.className = 'itemLevelDescription'; level.textContent = itemLevelDescription(key); parent.append(level);
+}
 function renderBuyRecommendations() {
   const list = $('buyRecommendationList');
   if (!list || !state.graph) return;
@@ -487,8 +491,8 @@ function renderBuyRecommendations() {
     const card = document.createElement('button'); card.type = 'button'; card.className = 'recommendationCard';
     const head = document.createElement('div'); head.className = 'recommendationHead';
     const text = document.createElement('div'); text.className = 'recommendationText';
-    const name = document.createElement('strong'); name.className = 'itemGrade' + gradeClass(entry.key); name.textContent = recommendationItemName(entry.key); name.title = name.textContent;
-    const route = document.createElement('small'); route.textContent = 'Compra il prodotto finito'; text.append(name, route);
+    const name = document.createElement('strong'); name.className = 'itemGrade' + gradeClass(entry.key); name.textContent = nameOf(entry.key); name.title = name.textContent;
+    const route = document.createElement('small'); route.textContent = 'Compra il prodotto finito'; text.append(name); appendItemLevel(text, entry.targetKey || entry.key); text.append(route);
     const rank = document.createElement('span'); rank.className = 'recommendationRank'; rank.textContent = '#' + (index + 1); head.append(iconOf(entry.key), text, rank);
     const label = document.createElement('span'); label.className = 'recommendationGainLabel'; label.textContent = 'Risparmio acquistando';
     const saving = document.createElement('strong'); saving.className = 'recommendationGain'; saving.textContent = format(entry.saving) + ' Kina';
@@ -519,7 +523,7 @@ function completeRecipeItemCategories(graph) {
 
 function recipes() {
   if (!state.graph?.recipes) return [];
-  return Object.entries(state.graph.recipes).filter(([, recipe]) => Array.isArray(recipe.in) && recipe.in.length && recipe.out);
+  return Object.entries(state.graph.recipes).filter(([, recipe]) => Array.isArray(recipe.in) && recipe.in.length && recipe.out && categoryOf(recipe) !== 'elevate');
 }
 
 function serverFaction() {
@@ -723,7 +727,7 @@ function renderResults() {
         ? 'Da ' + nameOf(recipe.transferFrom) + ' · Passaggio ' + transferStageNumber(recipe) + '/5 · ' + transferLevelLabel(recipe)
         : (categoryLabels[categoryOf(recipe)] || 'Materiali') + ' · ' + masteryLabel(recipe.ml) + (recipe.safe ? ' · Sicuro · livello 63 vincolato' : recipe.successChance != null ? ' · Combo · risultato livello 70' : '');
     sub.className = 'resultMeta';
-    text.append(sub);
+    appendItemLevel(text, recipe.out); text.append(sub);
     button.append(icons, text);
     button.addEventListener('click', () => { state.selected = id; renderResults(); renderDetail(); });
     list.append(button);
@@ -1061,7 +1065,7 @@ function renderDetail() {
   pane.replaceChildren();
   const titleRow = document.createElement('div'); titleRow.className = 'titleRow';
   const title = document.createElement('h2'); title.className = 'itemGrade' + gradeClass(recipe.out); title.textContent = nameOf(recipe.out);
-  titleRow.append(iconOf(recipe.out, 'large'), title);
+  const titleText = document.createElement('div'); titleText.className = 'itemTitleText'; titleText.append(title); appendItemLevel(titleText, recipe.out); titleRow.append(iconOf(recipe.out, 'large'), titleText);
   if (recipe.type !== 'transfer') {
     const marketActions = document.createElement('div'); marketActions.className = 'marketActions';
     const targets = recipe.combo && recipe.successChance != null && !recipe.safe
