@@ -60,11 +60,11 @@ $html = @'
     <section class="toolbar" aria-label="Impostazioni mercato">
       <div><label for="search">Cerca ricetta</label><input id="search" type="search" placeholder="Es. Orichalcum, Ruby Necklace…"></div>
     </section>
-    <dialog id="marketModal" class="marketModal" aria-labelledby="marketModalTitle"><div class="marketModalHead"><div class="marketHeading"><div id="marketItemIcon"></div><div><h2 id="marketModalTitle">Prezzo mercato</h2><p id="marketPriceSequence" class="marketPriceSequence">Prezzi osservati</p></div></div><button id="closeMarketModal" type="button" aria-label="Chiudi">Chiudi</button></div><div class="marketModalBody"><div class="marketCurrent"><strong id="marketModalCurrent">—</strong><small id="marketModalCount">Nessuna rilevazione</small></div><div class="marketChartCaption"><span>Prezzo (Kina)</span><span>ULTIME 24 ORE</span></div><canvas id="marketChart" class="marketChart" aria-label="Grafico dello storico prezzi"></canvas><div class="marketTimeLabel">Orario</div><div class="marketChartInfo"><span aria-hidden="true">ⓘ</span><p>Il prezzo resta piatto finché non arriva una nuova rilevazione diversa.</p></div><div class="marketLegend"><span><i></i>Prezzo sotto la media</span><span><i class="legendRed"></i>Prezzo sopra la media</span><span><i class="legendAverage"></i>Media delle rilevazioni</span></div><div id="marketStats" class="marketStats" aria-label="Statistiche del prezzo nelle ultime 24 ore"></div><div id="marketSummary" class="marketSummary equal"></div><p class="marketExplain">La linea tratteggiata indica la media dei prezzi registrati nelle ultime 24 ore. Verde: prezzo sotto la media; rosso: prezzo sopra la media. Il collector salva una rilevazione al minuto anche quando la pagina è chiusa. Quando lo storico è appena iniziato, la linea può sembrare quasi retta: diventa più dettagliata man mano che si accumulano punti. È un confronto storico, non una previsione.</p></div></dialog>
+    <dialog id="marketModal" class="marketModal" aria-labelledby="marketModalTitle"><div class="marketModalHead"><div class="marketHeading"><div id="marketItemIcon"></div><div><h2 id="marketModalTitle">Prezzo mercato</h2><p id="marketPriceSequence" class="marketPriceSequence">Prezzi osservati</p></div></div><button id="closeMarketModal" type="button" aria-label="Chiudi">Chiudi</button></div><div class="marketModalBody"><div class="marketCurrent"><strong id="marketModalCurrent">—</strong><small id="marketModalCount">Nessuna rilevazione</small></div><div class="marketChartCaption"><span>Prezzo (Kina)</span><span>ULTIMI 7 GIORNI</span></div><canvas id="marketChart" class="marketChart" aria-label="Grafico dello storico prezzi"></canvas><div class="marketTimeLabel">Orario</div><div class="marketChartInfo"><span aria-hidden="true">ⓘ</span><p>Il prezzo resta piatto finché non arriva una nuova rilevazione diversa.</p></div><div class="marketLegend"><span><i></i>Prezzo sotto la media</span><span><i class="legendRed"></i>Prezzo sopra la media</span><span><i class="legendAverage"></i>Media delle rilevazioni</span></div><div id="marketStats" class="marketStats" aria-label="Statistiche del prezzo nelle ultime 7 giorni"></div><div id="marketSummary" class="marketSummary equal"></div><p class="marketExplain">La linea tratteggiata indica la media dei prezzi registrati nelle ultime 7 giorni. Verde: prezzo sotto la media; rosso: prezzo sopra la media. Il collector salva una rilevazione al minuto anche quando la pagina è chiusa. Quando lo storico è appena iniziato, la linea può sembrare quasi retta: diventa più dettagliata man mano che si accumulano punti. È un confronto storico, non una previsione.</p></div></dialog>
     <div id="status" class="status" role="status" aria-live="polite">Caricamento ricette e prezzi di Vaizel…</div>
     <section class="recommendations" aria-labelledby="recommendationsTitle"><h2 id="recommendationsTitle">Craft consigliati</h2><p>Confronta costo dei materiali e ricavo dopo la tassa del 10%. Se il dettaglio mostra una perdita, conviene valutare l’acquisto dell’oggetto finito.</p><div id="recommendationList" class="recommendationList"></div></section>
     <section class="recommendations" aria-labelledby="buyRecommendationsTitle"><h2 id="buyRecommendationsTitle">Acquisti consigliati</h2><p>Artisan's Splendent, True Dragon Lord Lv. 62 e Splendent True Dragon Lord Lv. 70: fino a 10 oggetti che costano meno comprati che craftati. Risparmio = costo craftato meno prezzo di acquisto, senza tassa di vendita.</p><div id="buyRecommendationList" class="recommendationList"></div></section>
-    <section class="recommendations" aria-labelledby="openMarketTitle"><h2 id="openMarketTitle">Artisan Splendent senza annunci</h2><p>Tutti gli equipaggiamenti oro Lv. 44 senza offerte disponibili. Il prezzo suggerito è la media delle rilevazioni valide nelle ultime 24 ore: non garantisce una vendita. Nessun prezzo viene inventato quando manca lo storico.</p><div id="openMarketList" class="recommendationList"></div></section>
+    <section class="recommendations" aria-labelledby="openMarketTitle"><h2 id="openMarketTitle">Artisan Splendent senza annunci</h2><p>Tutti gli equipaggiamenti oro Lv. 44 senza offerte disponibili. Il prezzo suggerito è la media delle rilevazioni valide nelle ultime 7 giorni: non garantisce una vendita. Nessun prezzo viene inventato quando manca lo storico.</p><div id="openMarketList" class="recommendationList"></div></section>
     <section class="quickPrices" aria-labelledby="quickPricesTitle"><h2 id="quickPricesTitle">Prezzi rapidi del server</h2><div id="quickPriceList" class="quickPriceList"></div></section>
     <nav id="modes" class="modeMenu" aria-label="Tipo di crafting"></nav>
     <nav id="professions" class="menu" aria-label="Professioni di crafting"></nav>
@@ -178,7 +178,7 @@ async function loadQuickPriceHistory() {
   } catch { /* Usa lo storico locale del browser come ripiego. */ }
 }
 
-const HISTORY_LIMIT = 24 * 60 * 60 * 1000;
+const HISTORY_LIMIT = 7 * 24 * 60 * 60 * 1000;
 function priceHistoryKey(serverId) { return 'aion2craft:priceHistory:' + serverId; }
 function savePriceHistory(prices, timestamp) {
   const key = priceHistoryKey(state.server);
@@ -243,7 +243,7 @@ function drawPriceChart(itemKey, historyOverride = null) {
     context.fillStyle = '#b3c3d7'; context.font = '13px system-ui'; context.textAlign = 'center';
     context.fillText('Lo storico si popolerà con le prossime rilevazioni automatiche.', width / 2, height / 2 - 8);
     context.fillStyle = '#8296b0'; context.font = '11px system-ui';
-    context.fillText('Viene raccolto un prezzo al minuto; il grafico mostra al massimo 24 ore.', width / 2, height / 2 + 14);
+    context.fillText('Viene raccolto un prezzo al minuto; il grafico mostra al massimo 7 giorni.', width / 2, height / 2 + 14);
     return { points, average: null, current: current?.price == null ? null : Number(current.price) };
   }
   const values = points.map(point => Number(point.p));
@@ -375,15 +375,15 @@ async function openMarketModal(itemKey, forceRefresh = false) {
   const change = firstPrice != null && lastPrice != null ? lastPrice - firstPrice : null;
   const changePercent = change != null && firstPrice ? change / firstPrice * 100 : null;
   stats.replaceChildren(...[
-    ['Minimo 24h', historyValues.length ? format(Math.min(...historyValues)) + ' Kina' : '—', ''],
-    ['Massimo 24h', historyValues.length ? format(Math.max(...historyValues)) + ' Kina' : '—', ''],
-    ['Media 24h', average == null ? '—' : format(average) + ' Kina', ''],
+    ['Minimo 7 giorni', historyValues.length ? format(Math.min(...historyValues)) + ' Kina' : '—', ''],
+    ['Massimo 7 giorni', historyValues.length ? format(Math.max(...historyValues)) + ' Kina' : '—', ''],
+    ['Media 7 giorni', average == null ? '—' : format(average) + ' Kina', ''],
     ['Variazione', change == null ? '—' : (change > 0 ? '+' : '') + format(change) + ' Kina', change == null ? '' : change > 0 ? 'up' : change < 0 ? 'down' : 'flat', changePercent == null ? '' : (changePercent > 0 ? '+' : '') + changePercent.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + '%'],
   ].map(([label, value, tone, detail]) => {
     const card = document.createElement('div'); card.className = 'marketStat' + (tone ? ' ' + tone : '');
     const title = document.createElement('small'); title.textContent = label;
     const big = document.createElement('strong'); big.textContent = value;
-    const sub = document.createElement('span'); sub.textContent = detail || 'ultime 24 ore';
+    const sub = document.createElement('span'); sub.textContent = detail || 'ultime 7 giorni';
     card.append(title, big, sub); return card;
   }));
   const summary = $('marketSummary');
@@ -509,7 +509,7 @@ async function renderOpenMarketRecommendations() {
     const title = document.createElement('strong'); title.className = 'itemGrade' + gradeClass(entry.key); title.textContent = nameOf(entry.key); title.title = title.textContent;
     text.append(title); appendItemLevel(text, entry.key);
     const offers = document.createElement('small'); offers.textContent = '0 annunci disponibili'; text.append(offers); head.append(iconOf(entry.key), text);
-    const label = document.createElement('span'); label.className = 'recommendationGainLabel'; label.textContent = 'Prezzo suggerito · media storica 24h';
+    const label = document.createElement('span'); label.className = 'recommendationGainLabel'; label.textContent = 'Prezzo suggerito · media storica 7 giorni';
     const price = document.createElement('strong'); price.className = 'recommendationGain'; price.textContent = average == null ? 'Storico insufficiente' : format(average) + ' Kina';
     const detail = document.createElement('small'); detail.className = 'recommendationDetails'; detail.textContent = 'Costo craftato: ' + (cost == null ? 'incompleto' : format(cost) + ' Kina') + ' · ' + points.length + ' rilevazioni valide';
     if (average != null && cost != null) detail.textContent += ' · margine netto alla media: ' + format(netSale(average) - cost) + ' Kina';

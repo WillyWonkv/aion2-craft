@@ -15,6 +15,6 @@
   ],
   "vars": {
     "SERVER_IDS": "11303",
-    "RETENTION_DAYS": "1"
+    "RETENTION_DAYS": "7"
   }
 }

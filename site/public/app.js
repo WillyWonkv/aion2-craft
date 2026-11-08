@@ -96,7 +96,7 @@ async function loadQuickPriceHistory() {
   } catch { /* Usa lo storico locale del browser come ripiego. */ }
 }
 
-const HISTORY_LIMIT = 24 * 60 * 60 * 1000;
+const HISTORY_LIMIT = 7 * 24 * 60 * 60 * 1000;
 function priceHistoryKey(serverId) { return 'aion2craft:priceHistory:' + serverId; }
 function savePriceHistory(prices, timestamp) {
   const key = priceHistoryKey(state.server);
@@ -161,7 +161,7 @@ function drawPriceChart(itemKey, historyOverride = null) {
     context.fillStyle = '#b3c3d7'; context.font = '13px system-ui'; context.textAlign = 'center';
     context.fillText('Lo storico si popolerà con le prossime rilevazioni automatiche.', width / 2, height / 2 - 8);
     context.fillStyle = '#8296b0'; context.font = '11px system-ui';
-    context.fillText('Viene raccolto un prezzo al minuto; il grafico mostra al massimo 24 ore.', width / 2, height / 2 + 14);
+    context.fillText('Viene raccolto un prezzo al minuto; il grafico mostra al massimo 7 giorni.', width / 2, height / 2 + 14);
     return { points, average: null, current: current?.price == null ? null : Number(current.price) };
   }
   const values = points.map(point => Number(point.p));
@@ -293,15 +293,15 @@ async function openMarketModal(itemKey, forceRefresh = false) {
   const change = firstPrice != null && lastPrice != null ? lastPrice - firstPrice : null;
   const changePercent = change != null && firstPrice ? change / firstPrice * 100 : null;
   stats.replaceChildren(...[
-    ['Minimo 24h', historyValues.length ? format(Math.min(...historyValues)) + ' Kina' : '—', ''],
-    ['Massimo 24h', historyValues.length ? format(Math.max(...historyValues)) + ' Kina' : '—', ''],
-    ['Media 24h', average == null ? '—' : format(average) + ' Kina', ''],
+    ['Minimo 7 giorni', historyValues.length ? format(Math.min(...historyValues)) + ' Kina' : '—', ''],
+    ['Massimo 7 giorni', historyValues.length ? format(Math.max(...historyValues)) + ' Kina' : '—', ''],
+    ['Media 7 giorni', average == null ? '—' : format(average) + ' Kina', ''],
     ['Variazione', change == null ? '—' : (change > 0 ? '+' : '') + format(change) + ' Kina', change == null ? '' : change > 0 ? 'up' : change < 0 ? 'down' : 'flat', changePercent == null ? '' : (changePercent > 0 ? '+' : '') + changePercent.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + '%'],
   ].map(([label, value, tone, detail]) => {
     const card = document.createElement('div'); card.className = 'marketStat' + (tone ? ' ' + tone : '');
     const title = document.createElement('small'); title.textContent = label;
     const big = document.createElement('strong'); big.textContent = value;
-    const sub = document.createElement('span'); sub.textContent = detail || 'ultime 24 ore';
+    const sub = document.createElement('span'); sub.textContent = detail || 'ultime 7 giorni';
     card.append(title, big, sub); return card;
   }));
   const summary = $('marketSummary');
@@ -427,7 +427,7 @@ async function renderOpenMarketRecommendations() {
     const title = document.createElement('strong'); title.className = 'itemGrade' + gradeClass(entry.key); title.textContent = nameOf(entry.key); title.title = title.textContent;
     text.append(title); appendItemLevel(text, entry.key);
     const offers = document.createElement('small'); offers.textContent = '0 annunci disponibili'; text.append(offers); head.append(iconOf(entry.key), text);
-    const label = document.createElement('span'); label.className = 'recommendationGainLabel'; label.textContent = 'Prezzo suggerito · media storica 24h';
+    const label = document.createElement('span'); label.className = 'recommendationGainLabel'; label.textContent = 'Prezzo suggerito · media storica 7 giorni';
     const price = document.createElement('strong'); price.className = 'recommendationGain'; price.textContent = average == null ? 'Storico insufficiente' : format(average) + ' Kina';
     const detail = document.createElement('small'); detail.className = 'recommendationDetails'; detail.textContent = 'Costo craftato: ' + (cost == null ? 'incompleto' : format(cost) + ' Kina') + ' · ' + points.length + ' rilevazioni valide';
     if (average != null && cost != null) detail.textContent += ' · margine netto alla media: ' + format(netSale(average) - cost) + ' Kina';

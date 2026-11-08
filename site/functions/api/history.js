@@ -13,7 +13,7 @@ export async function onRequestGet({ request, env }) {
   try {
     const columns = requestedItems.map((key, index) => `json_extract(prices_json, '$."${key}"') AS i${index}`).join(', ');
     const result = await env.PRICE_HISTORY.prepare(
-      `SELECT sampled_at, ${columns} FROM price_snapshots WHERE server_id = ? AND sampled_at >= datetime('now', '-24 hours') ORDER BY sampled_at DESC LIMIT 1440`
+      `SELECT sampled_at, ${columns} FROM price_snapshots WHERE server_id = ? AND sampled_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-7 days') ORDER BY sampled_at DESC LIMIT 10080`
     ).bind(server).all();
     const histories = Object.fromEntries(requestedItems.map((key, index) => [key, []]));
     for (const row of (result.results || []).reverse()) {

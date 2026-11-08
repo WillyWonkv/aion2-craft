@@ -1,6 +1,6 @@
 # Collector prezzi ogni minuto
 
-Il Worker legge i prezzi Aion2Market per gli ID elencati in `SERVER_IDS`, salva uno snapshot compatto in D1 ogni minuto e conserva solo le ultime 24 ore. A ogni esecuzione elimina i record più vecchi di un giorno, così lo spazio viene riutilizzato. L'interfaccia aggiorna i prezzi ogni minuto e i grafici mostrano le ultime 24 ore (fino a 1.440 rilevazioni). La Function Pages `site/functions/api/history.js` legge lo stesso database; il grafico usa lo storico condiviso quando è configurato e mantiene lo storico locale come ripiego.
+Il Worker legge i prezzi Aion2Market per gli ID elencati in `SERVER_IDS`, salva uno snapshot compatto in D1 ogni minuto e conserva solo le ultime 7 giorni. A ogni esecuzione elimina i record più vecchi di un giorno, così lo spazio viene riutilizzato. L'interfaccia aggiorna i prezzi ogni minuto e i grafici mostrano le ultime 7 giorni (fino a 10.080 rilevazioni). La Function Pages `site/functions/api/history.js` legge lo stesso database; il grafico usa lo storico condiviso quando è configurato e mantiene lo storico locale come ripiego.
 
 ## Attivazione Cloudflare
 
