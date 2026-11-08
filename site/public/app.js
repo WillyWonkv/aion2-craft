@@ -794,6 +794,12 @@ function renderSequenceCalculator(rootId) {
         expected.title = values.crafts + ' craft × 25%: valore medio, non garantito';
         label.append(expected);
       }
+      if (field === 'normal') {
+        const expected = document.createElement('span'); expected.className = 'expectedComboBadge';
+        expected.textContent = 'Attesi: ' + formatAttempts(values.crafts * 0.75);
+        expected.title = values.crafts + ' craft × 75%: risultati normali teorici, prima degli eventuali fallimenti';
+        label.append(expected);
+      }
       const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.step = '1'; input.value = String(values[field]); input.setAttribute('aria-label', labelText + ' · ' + nameOf(recipe.out));
       input.addEventListener('change', () => {
         const nextValue = Math.max(0, Math.floor(Number(input.value) || 0));
