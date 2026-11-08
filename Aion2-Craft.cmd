@@ -49,6 +49,7 @@ $html = @'
     .itemLevelDescription{display:block;color:#a8c9e6;font-size:11px;line-height:1.5;margin:3px 0 5px}.itemTitleText{min-width:0}.itemTitleText h2{margin-bottom:3px}.itemTitleText .itemLevelDescription{font-size:12px}
     .expectedComboBadge{display:inline-block;margin-left:8px;padding:3px 7px;border:1px solid #376785;border-radius:6px;background:#17364b;color:#a5ddff;font-size:10px;font-weight:750;letter-spacing:0;text-transform:none;vertical-align:middle}
     .calculatorStageInputs{align-items:end}.calculatorStageInputs>div{min-width:0}.calculatorStageInputs label{min-height:23px;display:flex;align-items:center;flex-wrap:wrap;gap:4px}.calculatorStageInputs .expectedComboBadge{margin-left:4px}
+    .recommendationList{grid-template-columns:repeat(auto-fill,minmax(245px,1fr))}.recommendationCard{width:100%;height:100%}.recommendationGain{overflow-wrap:anywhere}@media(max-width:520px){.recommendationList{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -63,6 +64,7 @@ $html = @'
     <div id="status" class="status" role="status" aria-live="polite">Caricamento ricette e prezzi di Vaizel…</div>
     <section class="recommendations" aria-labelledby="recommendationsTitle"><h2 id="recommendationsTitle">Craft consigliati</h2><p>Confronta costo dei materiali e ricavo dopo la tassa del 10%. Se il dettaglio mostra una perdita, conviene valutare l’acquisto dell’oggetto finito.</p><div id="recommendationList" class="recommendationList"></div></section>
     <section class="recommendations" aria-labelledby="buyRecommendationsTitle"><h2 id="buyRecommendationsTitle">Acquisti consigliati</h2><p>Artisan's Splendent, True Dragon Lord Lv. 62 e Splendent True Dragon Lord Lv. 70: fino a 10 oggetti che costano meno comprati che craftati. Risparmio = costo craftato meno prezzo di acquisto, senza tassa di vendita.</p><div id="buyRecommendationList" class="recommendationList"></div></section>
+    <section class="recommendations" aria-labelledby="openMarketTitle"><h2 id="openMarketTitle">Artisan Splendent senza annunci</h2><p>Tutti gli equipaggiamenti oro Lv. 44 senza offerte disponibili. Il prezzo suggerito è la media delle rilevazioni valide nelle ultime 24 ore: non garantisce una vendita. Nessun prezzo viene inventato quando manca lo storico.</p><div id="openMarketList" class="recommendationList"></div></section>
     <section class="quickPrices" aria-labelledby="quickPricesTitle"><h2 id="quickPricesTitle">Prezzi rapidi del server</h2><div id="quickPriceList" class="quickPriceList"></div></section>
     <nav id="modes" class="modeMenu" aria-label="Tipo di crafting"></nav>
     <nav id="professions" class="menu" aria-label="Professioni di crafting"></nav>
@@ -394,6 +396,7 @@ async function openMarketModal(itemKey, forceRefresh = false) {
 
 function renderRecommendations() {
   renderBuyRecommendations();
+  void renderOpenMarketRecommendations();
   const list = $('recommendationList');
   if (!list || !state.graph) return;
   if (!state.prices.size) {
@@ -458,6 +461,63 @@ function renderRecommendations() {
     });
     return card;
   }));
+}
+
+let openMarketHistoryCache = { at: 0, histories: {} };
+let openMarketRequest = 0;
+async function renderOpenMarketRecommendations() {
+  const list = $('openMarketList');
+  if (!list || !state.graph) return;
+  const requestId = ++openMarketRequest;
+  const faction = serverFaction() === 'Asmodian' ? 'dark' : 'light';
+  const targets = new Map();
+  for (const [id, recipe] of recipes()) {
+    const key = String(recipe.combo || '');
+    const item = state.graph.items?.[key];
+    const kind = item?.mc || state.graph.items?.[String(recipe.out)]?.mc;
+    const market = state.prices.get(key);
+    if (recipe.type !== 'crafting' || recipe.qr !== faction || !/^Artisan's Splendent /.test(nameOf(key)) || item?.g !== 41 || !['weapon', 'armor', 'accessory'].includes(kind)) continue;
+    // Only a returned zero-listing item confirms that there are no current offers.
+    if (!market || Number(market.listings) !== 0) continue;
+    targets.set(key, { id, recipe, key });
+  }
+  if (!targets.size) {
+    list.replaceChildren(); const empty = document.createElement('p'); empty.className = 'recommendationEmpty'; empty.textContent = state.prices.size ? 'Nessun Artisan Splendent senza annunci nei dati disponibili.' : 'In attesa dei prezzi del mercato.'; list.append(empty); return;
+  }
+  if (Date.now() - openMarketHistoryCache.at > 60_000) {
+    const histories = {}; const keys = [...targets.keys()]; let loaded = false;
+    for (let start = 0; start < keys.length; start += 50) {
+      try {
+        const query = new URLSearchParams({ server: String(state.server), items: keys.slice(start, start + 50).join(',') });
+        const response = await fetch('/api/history?' + query, { cache: 'no-cache' });
+        const data = await response.json();
+        if (response.ok && data.histories) { Object.assign(histories, data.histories); loaded = true; }
+      } catch { /* Local history is used when shared history is unavailable. */ }
+    }
+    if (requestId !== openMarketRequest) return;
+    openMarketHistoryCache = { at: Date.now(), histories: loaded ? histories : {} };
+  }
+  if (requestId !== openMarketRequest) return;
+  const model = createCostModel(state.graph, unitPrice, faction, key => localStorage.getItem(overrideKey(key)) === '0', { optimizeMaterials: true });
+  const cards = [...targets.values()].sort((a, b) => nameOf(a.key).localeCompare(nameOf(b.key))).map(entry => {
+    const points = (openMarketHistoryCache.histories[entry.key] || getPriceHistory(entry.key)).filter(point => point.t >= Date.now() - HISTORY_LIMIT && Number(point.p) > 0);
+    const average = points.length ? points.reduce((sum, point) => sum + Number(point.p), 0) / points.length : null;
+    const cost = model.ownUnit(entry.key).cost;
+    const card = document.createElement('button'); card.type = 'button'; card.className = 'recommendationCard';
+    const head = document.createElement('div'); head.className = 'recommendationHead';
+    const text = document.createElement('div'); text.className = 'recommendationText';
+    const title = document.createElement('strong'); title.className = 'itemGrade' + gradeClass(entry.key); title.textContent = nameOf(entry.key); title.title = title.textContent;
+    text.append(title); appendItemLevel(text, entry.key);
+    const offers = document.createElement('small'); offers.textContent = '0 annunci disponibili'; text.append(offers); head.append(iconOf(entry.key), text);
+    const label = document.createElement('span'); label.className = 'recommendationGainLabel'; label.textContent = 'Prezzo suggerito · media storica 24h';
+    const price = document.createElement('strong'); price.className = 'recommendationGain'; price.textContent = average == null ? 'Storico insufficiente' : format(average) + ' Kina';
+    const detail = document.createElement('small'); detail.className = 'recommendationDetails'; detail.textContent = 'Costo craftato: ' + (cost == null ? 'incompleto' : format(cost) + ' Kina') + ' · ' + points.length + ' rilevazioni valide';
+    if (average != null && cost != null) detail.textContent += ' · margine netto alla media: ' + format(netSale(average) - cost) + ' Kina';
+    card.append(head, label, price, detail);
+    card.addEventListener('click', () => { state.mode = 'crafting'; state.profession = entry.recipe.p; state.category = categoryOf(entry.recipe); state.selected = entry.id; $('search').value = ''; fillModes(); fillProfessions(); fillCategories(); renderResults(); renderDetail(); document.querySelector('.layout')?.scrollIntoView({ behavior: 'smooth' }); });
+    return card;
+  });
+  list.replaceChildren(...cards);
 }
 
 function itemLevelDescription(key) {

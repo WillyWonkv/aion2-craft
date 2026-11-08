@@ -314,6 +314,7 @@ async function openMarketModal(itemKey, forceRefresh = false) {
 
 function renderRecommendations() {
   renderBuyRecommendations();
+  void renderOpenMarketRecommendations();
   const list = $('recommendationList');
   if (!list || !state.graph) return;
   if (!state.prices.size) {
@@ -378,6 +379,63 @@ function renderRecommendations() {
     });
     return card;
   }));
+}
+
+let openMarketHistoryCache = { at: 0, histories: {} };
+let openMarketRequest = 0;
+async function renderOpenMarketRecommendations() {
+  const list = $('openMarketList');
+  if (!list || !state.graph) return;
+  const requestId = ++openMarketRequest;
+  const faction = serverFaction() === 'Asmodian' ? 'dark' : 'light';
+  const targets = new Map();
+  for (const [id, recipe] of recipes()) {
+    const key = String(recipe.combo || '');
+    const item = state.graph.items?.[key];
+    const kind = item?.mc || state.graph.items?.[String(recipe.out)]?.mc;
+    const market = state.prices.get(key);
+    if (recipe.type !== 'crafting' || recipe.qr !== faction || !/^Artisan's Splendent /.test(nameOf(key)) || item?.g !== 41 || !['weapon', 'armor', 'accessory'].includes(kind)) continue;
+    // Only a returned zero-listing item confirms that there are no current offers.
+    if (!market || Number(market.listings) !== 0) continue;
+    targets.set(key, { id, recipe, key });
+  }
+  if (!targets.size) {
+    list.replaceChildren(); const empty = document.createElement('p'); empty.className = 'recommendationEmpty'; empty.textContent = state.prices.size ? 'Nessun Artisan Splendent senza annunci nei dati disponibili.' : 'In attesa dei prezzi del mercato.'; list.append(empty); return;
+  }
+  if (Date.now() - openMarketHistoryCache.at > 60_000) {
+    const histories = {}; const keys = [...targets.keys()]; let loaded = false;
+    for (let start = 0; start < keys.length; start += 50) {
+      try {
+        const query = new URLSearchParams({ server: String(state.server), items: keys.slice(start, start + 50).join(',') });
+        const response = await fetch('/api/history?' + query, { cache: 'no-cache' });
+        const data = await response.json();
+        if (response.ok && data.histories) { Object.assign(histories, data.histories); loaded = true; }
+      } catch { /* Local history is used when shared history is unavailable. */ }
+    }
+    if (requestId !== openMarketRequest) return;
+    openMarketHistoryCache = { at: Date.now(), histories: loaded ? histories : {} };
+  }
+  if (requestId !== openMarketRequest) return;
+  const model = createCostModel(state.graph, unitPrice, faction, key => localStorage.getItem(overrideKey(key)) === '0', { optimizeMaterials: true });
+  const cards = [...targets.values()].sort((a, b) => nameOf(a.key).localeCompare(nameOf(b.key))).map(entry => {
+    const points = (openMarketHistoryCache.histories[entry.key] || getPriceHistory(entry.key)).filter(point => point.t >= Date.now() - HISTORY_LIMIT && Number(point.p) > 0);
+    const average = points.length ? points.reduce((sum, point) => sum + Number(point.p), 0) / points.length : null;
+    const cost = model.ownUnit(entry.key).cost;
+    const card = document.createElement('button'); card.type = 'button'; card.className = 'recommendationCard';
+    const head = document.createElement('div'); head.className = 'recommendationHead';
+    const text = document.createElement('div'); text.className = 'recommendationText';
+    const title = document.createElement('strong'); title.className = 'itemGrade' + gradeClass(entry.key); title.textContent = nameOf(entry.key); title.title = title.textContent;
+    text.append(title); appendItemLevel(text, entry.key);
+    const offers = document.createElement('small'); offers.textContent = '0 annunci disponibili'; text.append(offers); head.append(iconOf(entry.key), text);
+    const label = document.createElement('span'); label.className = 'recommendationGainLabel'; label.textContent = 'Prezzo suggerito · media storica 24h';
+    const price = document.createElement('strong'); price.className = 'recommendationGain'; price.textContent = average == null ? 'Storico insufficiente' : format(average) + ' Kina';
+    const detail = document.createElement('small'); detail.className = 'recommendationDetails'; detail.textContent = 'Costo craftato: ' + (cost == null ? 'incompleto' : format(cost) + ' Kina') + ' · ' + points.length + ' rilevazioni valide';
+    if (average != null && cost != null) detail.textContent += ' · margine netto alla media: ' + format(netSale(average) - cost) + ' Kina';
+    card.append(head, label, price, detail);
+    card.addEventListener('click', () => { state.mode = 'crafting'; state.profession = entry.recipe.p; state.category = categoryOf(entry.recipe); state.selected = entry.id; $('search').value = ''; fillModes(); fillProfessions(); fillCategories(); renderResults(); renderDetail(); document.querySelector('.layout')?.scrollIntoView({ behavior: 'smooth' }); });
+    return card;
+  });
+  list.replaceChildren(...cards);
 }
 
 function itemLevelDescription(key) {
