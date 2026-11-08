@@ -919,7 +919,7 @@ function renderSequenceCalculator(rootId) {
 
     const normalCount = risky ? values.normal : Math.max(0, values.crafts * (Number(recipe.outq) || 1) - values.combo);
     const normalPrice = unitPrice(String(recipe.out));
-    const comboPrice = recipe.combo ? unitPrice(String(recipe.combo)) : null;
+    const comboPrice = Number(run.salePrice) > 0 ? Number(run.salePrice) : recipe.combo ? unitPrice(String(recipe.combo)) : null;
     let comboRemaining = values.combo;
     if (steps[index + 1] && recipe.combo) {
       const nextRecipe = steps[index + 1][1];
@@ -943,9 +943,18 @@ function renderSequenceCalculator(rootId) {
   const summary = document.createElement('div'); summary.className = 'numbers calculatorTotals';
   summary.append(
     box('Spesa totale stimata', spent == null ? 'Incompleta' : format(spent) + ' Kina', state.materialMode === 'optimize' ? 'Materiali valorizzati con il metodo meno caro' : 'Materiali valorizzati al mercato', spent == null ? 'warn' : ''),
-    box('Ricavo netto stimato', revenue == null ? 'Incompleto' : format(revenue) + ' Kina', 'Prezzi Vaizel meno tassa di vendita 10%', revenue == null ? 'warn' : 'accent'),
+    box('Ricavo netto stimato', revenue == null ? 'Incompleto' : format(revenue) + ' Kina', (Number(run.salePrice) > 0 ? 'Prezzo personale' : 'Prezzo di mercato') + ' meno tassa di vendita 10%', revenue == null ? 'warn' : 'accent'),
     box(profit == null ? 'Guadagno / perdita' : profit >= 0 ? 'Guadagno netto' : 'Perdita netta', profit == null ? '—' : (profit >= 0 ? '+' : '−') + format(Math.abs(profit)) + ' Kina', 'Ricavo netto − spesa totale', 'outcomeProfit ' + (profit == null ? '' : profit >= 0 ? 'gain' : 'loss'))
   );
+  const saleCard = document.createElement('div'); saleCard.className = 'number';
+  const saleLabel = document.createElement('label'); saleLabel.htmlFor = 'calculatorSalePrice'; saleLabel.textContent = 'Prezzo di vendita per pezzo';
+  const saleInput = document.createElement('input'); saleInput.id = 'calculatorSalePrice'; saleInput.type = 'number'; saleInput.min = '0'; saleInput.step = '1'; saleInput.value = String(Math.max(0, Number(run.salePrice) || 0));
+  saleInput.addEventListener('change', () => {
+    run.salePrice = Math.max(0, Number(saleInput.value) || 0);
+    localStorage.setItem(storageKey, JSON.stringify(run)); renderDetail();
+  });
+  const saleHint = document.createElement('small'); saleHint.textContent = 'In Kina, prima delle tasse. Con 0 usa il mercato. Il prezzo si applica alle combo finali.';
+  saleCard.append(saleLabel, saleInput, saleHint); summary.append(saleCard);
   pane.append(summary);
   if (total.invalid) {
     const warning = document.createElement('p'); warning.className = 'buyFinishedAdvice';
