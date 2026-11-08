@@ -864,7 +864,14 @@ function renderSequenceCalculator(rootId) {
     values.combo = Math.max(0, Number(values.combo) || 0);
     const stage = document.createElement('section'); stage.className = 'calculatorStage';
     const head = document.createElement('div'); head.className = 'calculatorStageHead';
-    head.append(iconOf(recipe.out));
+    const stageIcons = document.createElement('div'); stageIcons.className = 'resultIcons';
+    stageIcons.append(iconOf(recipe.out));
+    if (recipe.combo && String(recipe.combo) !== String(recipe.out)) {
+      const arrow = document.createElement('span'); arrow.className = 'resultIconArrow'; arrow.textContent = '→'; arrow.setAttribute('aria-hidden', 'true');
+      const comboIcon = iconOf(recipe.combo); comboIcon.title = nameOf(recipe.combo);
+      stageIcons.append(arrow, comboIcon);
+    }
+    head.append(stageIcons);
     const headText = document.createElement('div'); const headName = document.createElement('strong'); headName.textContent = (index + 1) + '. ' + nameOf(recipe.out);
     const headMeta = document.createElement('small'); headMeta.textContent = recipe.combo ? 'Risultato: ' + nameOf(recipe.out) + ' · combo: ' + nameOf(recipe.combo) : 'Risultato normale';
     headText.append(headName); appendItemLevel(headText, recipe.out); headText.append(headMeta); head.append(headText); stage.append(head);
@@ -890,7 +897,7 @@ function renderSequenceCalculator(rootId) {
       input.addEventListener('change', () => {
         const nextValue = Math.max(0, Math.floor(Number(input.value) || 0));
         values[field] = nextValue;
-        if (field === 'combo' && steps[index + 1]) {
+        if (field === 'combo' && steps[index + 1] && !/^(True|Star) Dragon Lord /.test(nameOf(steps[index + 1][1].out))) {
           const nextRecipe = steps[index + 1][1];
           const consumedPerCraft = nextRecipe.in.find(([key]) => String(key) === String(recipe.combo))?.[1] || 1;
           run.steps[index + 1].crafts = Math.floor(nextValue / Number(consumedPerCraft));
