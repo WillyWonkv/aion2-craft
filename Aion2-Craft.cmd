@@ -182,19 +182,39 @@ function savePriceHistory(prices, timestamp) {
   const key = priceHistoryKey(state.server);
   let history = {};
   try { history = JSON.parse(localStorage.getItem(key) || '{}'); } catch { history = {}; }
+  const compact = {};
   for (const [itemKey, item] of prices) {
     if (item?.price == null || !Number.isFinite(Number(item.price))) continue;
-    const points = Array.isArray(history[itemKey]) ? history[itemKey] : [];
-    if (points.at(-1)?.t !== timestamp) points.push({ t: timestamp, p: Number(item.price) });
-    history[itemKey] = points.filter(point => timestamp - point.t <= HISTORY_LIMIT).slice(-1440);
+    const points = (Array.isArray(history[itemKey]) ? history[itemKey] : [])
+      .filter(point => Number.isFinite(point.t) && Number.isFinite(point.p) && timestamp - point.t <= HISTORY_LIMIT);
+    const reduced = [];
+    for (const point of [...points, { t: timestamp, p: Number(item.price) }]) {
+      // Keep the start and end of a flat stretch, rather than one point per minute.
+      if (reduced.length >= 2 && reduced.at(-1).p === point.p && reduced.at(-2).p === point.p) reduced[reduced.length - 1] = point;
+      else reduced.push(point);
+    }
+    compact[itemKey] = reduced.slice(-128);
   }
-  localStorage.setItem(key, JSON.stringify(history));
+  let serialized = JSON.stringify(compact);
+  const oldest = Object.keys(compact).sort((a, b) => compact[a].at(-1).t - compact[b].at(-1).t);
+  while (serialized.length > 600_000 && oldest.length) {
+    delete compact[oldest.shift()]; serialized = JSON.stringify(compact);
+  }
+  try { localStorage.setItem(key, serialized); }
+  catch {
+    // A full browser cache must never turn a successful market response into an error.
+    try {
+      localStorage.removeItem(key);
+      const quickOnly = Object.fromEntries(Object.entries(compact).filter(([id]) => QUICK_PRICE_ITEMS.includes(id)));
+      localStorage.setItem(key, JSON.stringify(quickOnly));
+    } catch { /* Shared database history remains available without a local cache. */ }
+  }
 }
 
 function getPriceHistory(itemKey) {
   try {
     const history = JSON.parse(localStorage.getItem(priceHistoryKey(state.server)) || '{}');
-    return Array.isArray(history[itemKey]) ? history[itemKey].filter(point => Number.isFinite(point.p) && Number.isFinite(point.t)) : [];
+    return Array.isArray(history[itemKey]) ? history[itemKey].filter(point => Number.isFinite(point.p) && Number.isFinite(point.t) && point.t >= Date.now() - HISTORY_LIMIT) : [];
   } catch { return []; }
 }
 
