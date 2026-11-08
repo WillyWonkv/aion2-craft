@@ -820,7 +820,7 @@ function renderSequenceCalculator(rootId) {
   const title = document.createElement('h2'); title.className = 'itemGrade' + gradeClass(root.out); title.textContent = 'Calculator · ' + nameOf(root.out);
   titleRow.append(iconOf(root.out, 'large'), title); pane.append(titleRow);
   const intro = document.createElement('p'); intro.className = 'calculatorIntro';
-  intro.textContent = 'Inserisci i tentativi e le combo realmente ottenute a ogni passaggio. Per le ricette normali i risultati base sono craft tentati meno combo; nelle ricette rischiose inserisci anche i risultati Lv. 63. Le combo usate nella fase successiva non sono conteggiate come vendute; al ricavo viene sottratta la tassa del 10%.';
+  intro.textContent = 'Inserisci i tentativi e le combo realmente ottenute a ogni passaggio. Per le ricette normali i risultati base sono craft tentati meno combo; nelle ricette rischiose inserisci anche i risultati Lv. 63. Le fasi a zero sono saltate e il ricavo considera solo le combo della fase finale eseguita; al ricavo viene sottratta la tassa del 10%.';
   pane.append(intro);
 
   const modeWrap = document.createElement('fieldset'); modeWrap.className = 'materialMode';
@@ -849,6 +849,7 @@ function renderSequenceCalculator(rootId) {
     comboSuccessRateFor: id => state.graph.recipes[id]?.comboSuccessChance != null ? MAX_COMBO_SUCCESS : undefined,
   });
   const total = { cost: 0, revenue: 0, missingCosts: new Set(), missingSales: new Set(), invalid: false };
+  const lastActiveStage = run.steps.reduce((last, step, index) => Number(step.crafts) > 0 ? index : last, -1);
 
   for (let index = 0; index < steps.length; index++) {
     const [recipeId, recipe] = steps[index];
@@ -896,14 +897,21 @@ function renderSequenceCalculator(rootId) {
     }
     stage.append(fields);
 
+    if (!values.crafts) {
+      const skipped = document.createElement('div'); skipped.className = 'calculatorStageCost'; skipped.textContent = 'Fase non eseguita · esclusa dal calcolo';
+      stage.append(skipped); pane.append(stage); continue;
+    }
+
     const previousComboKey = index > 0 ? String(steps[index - 1][1].combo) : null;
+    const previousStageActive = index > 0 && Number(run.steps[index - 1].crafts) > 0;
     const attempt = model.ownAttempt(recipe);
     let unitCost = 0;
     const stageMissingCosts = new Set();
     for (const line of attempt.lines) {
-      if (previousComboKey && String(line.key) === previousComboKey) continue;
-      if (line.unit.cost == null) for (const key of line.unit.missing || [line.key]) stageMissingCosts.add(String(key));
-      else unitCost += line.unit.cost * line.quantity;
+      if (previousComboKey && String(line.key) === previousComboKey && previousStageActive) continue;
+      const unit = previousComboKey && String(line.key) === previousComboKey ? model.marketUnit(line.key) : line.unit;
+      if (unit.cost == null) for (const key of unit.missing || [line.key]) stageMissingCosts.add(String(key));
+      else unitCost += unit.cost * line.quantity;
     }
     if (values.crafts) for (const key of stageMissingCosts) total.missingCosts.add(key);
     const stageCost = values.crafts && stageMissingCosts.size ? null : unitCost * values.crafts;
@@ -919,17 +927,13 @@ function renderSequenceCalculator(rootId) {
       comboRemaining -= run.steps[index + 1].crafts * inputQuantity;
       if (comboRemaining < 0) total.invalid = true;
     }
-    if (normalCount > 0) {
-      if (normalPrice == null) total.missingSales.add(String(recipe.out));
-      else total.revenue += netSale(normalPrice) * normalCount;
-    }
-    if (comboRemaining > 0 && recipe.combo) {
+    if (index === lastActiveStage && comboRemaining > 0 && recipe.combo) {
       if (comboPrice == null) total.missingSales.add(String(recipe.combo));
       else total.revenue += netSale(comboPrice) * comboRemaining;
     }
     if (values.combo > values.crafts * (Number(recipe.outq) || 1)) total.invalid = true;
     const costNote = document.createElement('div'); costNote.className = 'calculatorStageCost';
-    costNote.textContent = 'Costo stimato per craft: ' + (stageMissingCosts.size && values.crafts ? 'incompleto · controlla i prezzi dei materiali' : format(unitCost) + ' Kina') + (index > 0 ? ' · il pezzo combo della fase prima è già conteggiato' : '');
+    costNote.textContent = 'Costo stimato per craft: ' + (stageMissingCosts.size && values.crafts ? 'incompleto · controlla i prezzi dei materiali' : format(unitCost) + ' Kina') + (previousStageActive ? ' · il pezzo combo della fase prima è già conteggiato' : previousComboKey ? ' · pezzo iniziale valorizzato al mercato' : '');
     stage.append(costNote); pane.append(stage);
   }
 
@@ -949,7 +953,7 @@ function renderSequenceCalculator(rootId) {
     pane.append(warning);
   }
   const footnote = document.createElement('p'); footnote.className = 'calculatorNote';
-  footnote.textContent = 'I prezzi di vendita mancanti o i prezzi dei materiali mancanti rendono il totale incompleto. I pezzi combo usati nella fase successiva non vengono conteggiati come venduti. I risultati inseriti sono quelli reali della tua sessione; commissioni di inserzione escluse.';
+  footnote.textContent = 'I prezzi di vendita mancanti o i prezzi dei materiali mancanti rendono il totale incompleto. Le fasi a zero sono escluse. Il ricavo considera solo le combo della fase finale eseguita; risultati normali e combo intermedie rimaste sono esclusi. I risultati inseriti sono quelli reali della tua sessione; commissioni di inserzione escluse.';
   pane.append(footnote);
   if (total.missingCosts.size) addMissingPriceInputs(pane, [...total.missingCosts], 'Inserisci i prezzi mancanti dei materiali');
   if (total.missingSales.size) addMissingPriceInputs(pane, [...total.missingSales], 'Inserisci i prezzi mancanti dei risultati');
