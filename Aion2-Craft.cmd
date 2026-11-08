@@ -50,16 +50,13 @@ $html = @'
     .expectedComboBadge{display:inline-block;margin-left:8px;padding:3px 7px;border:1px solid #376785;border-radius:6px;background:#17364b;color:#a5ddff;font-size:10px;font-weight:750;letter-spacing:0;text-transform:none;vertical-align:middle}
     .calculatorStageInputs{align-items:end}.calculatorStageInputs>div{min-width:0}.calculatorStageInputs label{min-height:23px;display:flex;align-items:center;flex-wrap:wrap;gap:4px}.calculatorStageInputs .expectedComboBadge{margin-left:4px}
     .recommendationList{grid-template-columns:repeat(auto-fill,minmax(245px,1fr))}.recommendationCard{width:100%;height:100%}.recommendationGain{overflow-wrap:anywhere}@media(max-width:520px){.recommendationList{grid-template-columns:1fr}}
+    .quickPrice .quickPriceVariation{font-weight:700}.quickPrice .quickPriceVariation.up{color:#ff989d}.quickPrice .quickPriceVariation.down{color:#70e3a4}
+    .gameBrand{display:flex;align-items:center;gap:14px;margin:0}.gameBrand img{display:block;width:clamp(80px,12vw,100px);height:auto}.gameBrandTitle{border-left:1px solid #365474;padding-left:14px;color:#eef6ff;font-size:clamp(20px,3vw,30px);font-weight:800;letter-spacing:-.035em;white-space:nowrap}.gameBrandTitle span{color:#9dd9ff}
   </style>
 </head>
 <body>
   <div class="shell">
-    <header class="top"><div class="brand"><div class="mark">A</div><div><strong>Aion 2 Craft</strong><small>Global · prezzi per server · costi in Kina</small></div></div><div class="headerTags"><div class="creatorTag">Creato da <strong>WillyWonka</strong></div><div class="badge">Vaizel · Europa · Elyos</div></div></header>
-    <h1>Quanto costa davvero craftarlo?</h1>
-    <p class="intro">Cerca un oggetto o seleziona una professione. Nel dettaglio confronta il costo per craftare con il ricavo netto dalla vendita. Prezzi e grafici sono riferiti a Vaizel, Europa.</p>
-    <section class="toolbar" aria-label="Impostazioni mercato">
-      <div><label for="search">Cerca ricetta</label><input id="search" type="search" placeholder="Es. Orichalcum, Ruby Necklace…"></div>
-    </section>
+    <header class="top"><h1 class="gameBrand"><img src="https://raw.githubusercontent.com/xtopolis/aion2-static/main/src/assets/logo-aion2.png" alt=""><span class="gameBrandTitle">Aion 2 <span>Craft</span></span></h1><div class="headerTags"><div class="creatorTag">Creato da <strong>WillyWonka</strong></div><div class="badge">Vaizel · Europa · Elyos</div></div></header>
     <dialog id="marketModal" class="marketModal" aria-labelledby="marketModalTitle"><div class="marketModalHead"><div class="marketHeading"><div id="marketItemIcon"></div><div><h2 id="marketModalTitle">Prezzo mercato</h2><p id="marketPriceSequence" class="marketPriceSequence">Prezzi osservati</p></div></div><button id="closeMarketModal" type="button" aria-label="Chiudi">Chiudi</button></div><div class="marketModalBody"><div class="marketCurrent"><strong id="marketModalCurrent">—</strong><small id="marketModalCount">Nessuna rilevazione</small></div><div class="marketChartCaption"><span>Prezzo (Kina)</span><span>ULTIMI 7 GIORNI</span></div><canvas id="marketChart" class="marketChart" aria-label="Grafico dello storico prezzi"></canvas><div class="marketTimeLabel">Orario</div><div class="marketChartInfo"><span aria-hidden="true">ⓘ</span><p>Il prezzo resta piatto finché non arriva una nuova rilevazione diversa.</p></div><div class="marketLegend"><span><i></i>Prezzo sotto la media</span><span><i class="legendRed"></i>Prezzo sopra la media</span><span><i class="legendAverage"></i>Media delle rilevazioni</span></div><div id="marketStats" class="marketStats" aria-label="Statistiche del prezzo nelle ultime 7 giorni"></div><div id="marketSummary" class="marketSummary equal"></div><p class="marketExplain">La linea tratteggiata indica la media dei prezzi registrati nelle ultime 7 giorni. Verde: prezzo sotto la media; rosso: prezzo sopra la media. Il collector salva una rilevazione al minuto anche quando la pagina è chiusa. Quando lo storico è appena iniziato, la linea può sembrare quasi retta: diventa più dettagliata man mano che si accumulano punti. È un confronto storico, non una previsione.</p></div></dialog>
     <div id="status" class="status" role="status" aria-live="polite">Caricamento ricette e prezzi di Vaizel…</div>
     <section class="recommendations" aria-labelledby="recommendationsTitle"><h2 id="recommendationsTitle">Craft consigliati</h2><p>Confronta costo dei materiali e ricavo dopo la tassa del 10%. Se il dettaglio mostra una perdita, conviene valutare l’acquisto dell’oggetto finito.</p><div id="recommendationList" class="recommendationList"></div></section>
@@ -157,8 +154,18 @@ function renderQuickPrices() {
     const text = document.createElement('div');
     const name = document.createElement('span'); name.className = 'quickPriceName itemGrade' + gradeClass(key); name.textContent = nameOf(key); name.title = name.textContent;
     const price = document.createElement('strong'); price.textContent = market?.price == null ? '—' : format(Number(market.price)) + ' Kina';
-    const listings = document.createElement('small'); listings.textContent = market ? (market.listings || 0) + ' annunci' : 'Prezzo non disponibile';
-    text.append(name, price, listings);
+    const variation = document.createElement('small'); variation.className = 'quickPriceVariation';
+    const change = market?.changePct == null ? NaN : Number(market.changePct);
+    if (currentPrice == null || !Number.isFinite(change)) {
+      variation.textContent = currentPrice == null ? 'Prezzo non disponibile' : 'Variazione non disponibile';
+    } else {
+      variation.classList.add(change > 0 ? 'up' : change < 0 ? 'down' : 'flat');
+      const arrow = document.createElement('span'); arrow.setAttribute('aria-hidden', 'true');
+      arrow.textContent = change > 0 ? '↑' : change < 0 ? '↓' : '→';
+      variation.title = 'Variazione del prezzo nella finestra di 24 ore';
+      variation.append(arrow, ` ${change > 0 ? '+' : ''}${formatPercent(change)}%`);
+    }
+    text.append(name, price, variation);
     const itemIcon = iconOf(key, 'quickPriceIcon');
     if (signal !== 'neutral') itemIcon.classList.add('signal-' + signal);
     card.append(itemIcon, text);
@@ -455,7 +462,7 @@ function renderRecommendations() {
       state.profession = entry.recipe.p;
       state.category = categoryOf(entry.recipe);
       state.selected = entry.id;
-      $('search').value = '';
+      
       fillModes(); fillProfessions(); fillCategories(); renderResults(); renderDetail();
       document.querySelector('.layout')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
@@ -514,7 +521,7 @@ async function renderOpenMarketRecommendations() {
     const detail = document.createElement('small'); detail.className = 'recommendationDetails'; detail.textContent = 'Costo craftato: ' + (cost == null ? 'incompleto' : format(cost) + ' Kina') + ' · ' + points.length + ' rilevazioni valide';
     if (average != null && cost != null) detail.textContent += ' · margine netto alla media: ' + format(netSale(average) - cost) + ' Kina';
     card.append(head, label, price, detail);
-    card.addEventListener('click', () => { state.mode = 'crafting'; state.profession = entry.recipe.p; state.category = categoryOf(entry.recipe); state.selected = entry.id; $('search').value = ''; fillModes(); fillProfessions(); fillCategories(); renderResults(); renderDetail(); document.querySelector('.layout')?.scrollIntoView({ behavior: 'smooth' }); });
+    card.addEventListener('click', () => { state.mode = 'crafting'; state.profession = entry.recipe.p; state.category = categoryOf(entry.recipe); state.selected = entry.id;  fillModes(); fillProfessions(); fillCategories(); renderResults(); renderDetail(); document.querySelector('.layout')?.scrollIntoView({ behavior: 'smooth' }); });
     return card;
   });
   list.replaceChildren(...cards);
@@ -588,7 +595,7 @@ function renderBuyRecommendations() {
     const detail = document.createElement('small'); detail.className = 'recommendationDetails'; detail.textContent = 'Craft ' + format(entry.cost) + ' · acquisto ' + format(entry.market.price) + ' Kina · ' + entry.market.listings + ' annunci';
     card.append(head, label, saving, detail);
     card.addEventListener('click', () => {
-      state.mode = 'crafting'; state.profession = entry.recipe.p; state.category = categoryOf(entry.recipe); state.selected = entry.id; $('search').value = '';
+      state.mode = 'crafting'; state.profession = entry.recipe.p; state.category = categoryOf(entry.recipe); state.selected = entry.id; 
       fillModes(); fillProfessions(); fillCategories(); renderResults(); renderDetail(); document.querySelector('.layout')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     list.append(card);
@@ -683,12 +690,10 @@ function sequenceRoots(categoryFilter = state.category) {
 }
 
 function visibleRecipes() {
-  const query = $('search').value.trim().toLocaleLowerCase();
   const available = state.mode === 'calculator' ? sequenceRoots() : professionRecipes();
   return available
     .filter(([, recipe]) =>
-      (state.category === 'all' || categoryOf(recipe) === state.category) &&
-      (!query || nameOf(recipe.out).toLocaleLowerCase().includes(query))
+      (state.category === 'all' || categoryOf(recipe) === state.category)
     )
     .sort(([, a], [, b]) => {
       if (state.mode === 'transfer') {
@@ -719,7 +724,7 @@ function fillProfessions() {
     const title = document.createElement('strong'); title.textContent = professionLabels[value];
     const hint = document.createElement('small'); hint.textContent = professionHints[value];
     button.append(title, hint);
-    button.addEventListener('click', () => { state.profession = value; state.category = 'all'; $('search').value = ''; fillProfessions(); fillCategories(); chooseFirst(); });
+    button.addEventListener('click', () => { state.profession = value; state.category = 'all';  fillProfessions(); fillCategories(); chooseFirst(); });
     return button;
   }));
 }
@@ -733,7 +738,7 @@ function fillModes() {
     button.addEventListener('click', () => {
       state.mode = value;
       if (value === 'calculator' && !SEQUENCE_PROFESSIONS.includes(state.profession)) state.profession = 'blacksmithing';
-      state.category = 'all'; $('search').value = '';
+      state.category = 'all'; 
       fillModes(); fillProfessions(); fillCategories(); chooseFirst();
     });
     return button;
@@ -762,10 +767,10 @@ function renderResults() {
   const listHint = document.querySelector('.panelHead p');
   if (listHeading) listHeading.firstChild.textContent = state.mode === 'calculator' ? 'Oggetto di partenza ' : state.mode === 'transfer' ? 'Progressione Transfer Crafting ' : 'Ricette ';
   if (listHint) listHint.textContent = state.mode === 'calculator'
-    ? 'Scegli una categoria e l’oggetto iniziale della sequenza; puoi cercarlo per nome.'
+    ? 'Scegli una categoria e l’oggetto iniziale della sequenza.'
     : state.mode === 'transfer'
       ? 'La linea mostra oggetto trasferito → risultato normale → eventuale combo, con il livello ottenuto in ogni passaggio.'
-      : 'Scegli prima il tipo di crafting e la professione, poi filtra per categoria o cerca il nome.';
+      : 'Scegli prima il tipo di crafting e la professione, poi filtra per categoria.';
   const list = $('results');
   list.replaceChildren();
   if (!matching.length) {
@@ -1172,7 +1177,7 @@ function renderDetail() {
   if (!recipe) {
     pane.replaceChildren();
     const title = document.createElement('h2'); title.textContent = 'Nessuna ricetta';
-    const note = document.createElement('p'); note.className = 'muted'; note.textContent = 'Scegli una categoria o cambia la ricerca.';
+    const note = document.createElement('p'); note.className = 'muted'; note.textContent = 'Scegli una categoria o cambia professione.';
     pane.append(title, note);
     return;
   }
@@ -1367,7 +1372,7 @@ async function loadPrices(preserveOld = false, forceRefresh = preserveOld) {
   status((preserveOld ? 'Aggiornamento' : 'Caricamento') + ' prezzi di Vaizel · Europa…');
   try {
     const result = await getJSON('/api/prices?server=' + state.server + (forceRefresh ? '&refresh=' + Date.now() : ''));
-    state.prices = new Map(result.items.map(item => [String(item.item_key), { name: item.name, price: item.price, listings: item.listings }]));
+    state.prices = new Map(result.items.map(item => [String(item.item_key), { name: item.name, price: item.price, listings: item.listings, changePct: item.change_pct }]));
     state.fetchedAt = result.retrieved_at;
     savePriceHistory(state.prices, Date.now());
     const time = new Date(state.fetchedAt).toLocaleString('it-IT');
@@ -1395,7 +1400,6 @@ $('closeMarketModal').addEventListener('click', () => $('marketModal').close());
 $('marketModal').addEventListener('click', event => { if (event.target === $('marketModal')) $('marketModal').close(); });
 window.addEventListener('resize', () => { const dialog = $('marketModal'); if (dialog.open && dialog.dataset.itemKey) drawPriceChart(dialog.dataset.itemKey, modalHistory); });
 
-$('search').addEventListener('input', chooseFirst);
 setInterval(() => loadPrices(true, false), AUTO_REFRESH_INTERVAL_MS);
 init().catch(error => status('Impossibile caricare i dati: ' + error.message + '. Riprova fra poco.', 'error'));
 

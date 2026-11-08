@@ -75,8 +75,18 @@ function renderQuickPrices() {
     const text = document.createElement('div');
     const name = document.createElement('span'); name.className = 'quickPriceName itemGrade' + gradeClass(key); name.textContent = nameOf(key); name.title = name.textContent;
     const price = document.createElement('strong'); price.textContent = market?.price == null ? '—' : format(Number(market.price)) + ' Kina';
-    const listings = document.createElement('small'); listings.textContent = market ? (market.listings || 0) + ' annunci' : 'Prezzo non disponibile';
-    text.append(name, price, listings);
+    const variation = document.createElement('small'); variation.className = 'quickPriceVariation';
+    const change = market?.changePct == null ? NaN : Number(market.changePct);
+    if (currentPrice == null || !Number.isFinite(change)) {
+      variation.textContent = currentPrice == null ? 'Prezzo non disponibile' : 'Variazione non disponibile';
+    } else {
+      variation.classList.add(change > 0 ? 'up' : change < 0 ? 'down' : 'flat');
+      const arrow = document.createElement('span'); arrow.setAttribute('aria-hidden', 'true');
+      arrow.textContent = change > 0 ? '↑' : change < 0 ? '↓' : '→';
+      variation.title = 'Variazione del prezzo nella finestra di 24 ore';
+      variation.append(arrow, ` ${change > 0 ? '+' : ''}${formatPercent(change)}%`);
+    }
+    text.append(name, price, variation);
     const itemIcon = iconOf(key, 'quickPriceIcon');
     if (signal !== 'neutral') itemIcon.classList.add('signal-' + signal);
     card.append(itemIcon, text);
@@ -373,7 +383,7 @@ function renderRecommendations() {
       state.profession = entry.recipe.p;
       state.category = categoryOf(entry.recipe);
       state.selected = entry.id;
-      $('search').value = '';
+      
       fillModes(); fillProfessions(); fillCategories(); renderResults(); renderDetail();
       document.querySelector('.layout')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
@@ -432,7 +442,7 @@ async function renderOpenMarketRecommendations() {
     const detail = document.createElement('small'); detail.className = 'recommendationDetails'; detail.textContent = 'Costo craftato: ' + (cost == null ? 'incompleto' : format(cost) + ' Kina') + ' · ' + points.length + ' rilevazioni valide';
     if (average != null && cost != null) detail.textContent += ' · margine netto alla media: ' + format(netSale(average) - cost) + ' Kina';
     card.append(head, label, price, detail);
-    card.addEventListener('click', () => { state.mode = 'crafting'; state.profession = entry.recipe.p; state.category = categoryOf(entry.recipe); state.selected = entry.id; $('search').value = ''; fillModes(); fillProfessions(); fillCategories(); renderResults(); renderDetail(); document.querySelector('.layout')?.scrollIntoView({ behavior: 'smooth' }); });
+    card.addEventListener('click', () => { state.mode = 'crafting'; state.profession = entry.recipe.p; state.category = categoryOf(entry.recipe); state.selected = entry.id;  fillModes(); fillProfessions(); fillCategories(); renderResults(); renderDetail(); document.querySelector('.layout')?.scrollIntoView({ behavior: 'smooth' }); });
     return card;
   });
   list.replaceChildren(...cards);
@@ -506,7 +516,7 @@ function renderBuyRecommendations() {
     const detail = document.createElement('small'); detail.className = 'recommendationDetails'; detail.textContent = 'Craft ' + format(entry.cost) + ' · acquisto ' + format(entry.market.price) + ' Kina · ' + entry.market.listings + ' annunci';
     card.append(head, label, saving, detail);
     card.addEventListener('click', () => {
-      state.mode = 'crafting'; state.profession = entry.recipe.p; state.category = categoryOf(entry.recipe); state.selected = entry.id; $('search').value = '';
+      state.mode = 'crafting'; state.profession = entry.recipe.p; state.category = categoryOf(entry.recipe); state.selected = entry.id; 
       fillModes(); fillProfessions(); fillCategories(); renderResults(); renderDetail(); document.querySelector('.layout')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     list.append(card);
@@ -601,12 +611,10 @@ function sequenceRoots(categoryFilter = state.category) {
 }
 
 function visibleRecipes() {
-  const query = $('search').value.trim().toLocaleLowerCase();
   const available = state.mode === 'calculator' ? sequenceRoots() : professionRecipes();
   return available
     .filter(([, recipe]) =>
-      (state.category === 'all' || categoryOf(recipe) === state.category) &&
-      (!query || nameOf(recipe.out).toLocaleLowerCase().includes(query))
+      (state.category === 'all' || categoryOf(recipe) === state.category)
     )
     .sort(([, a], [, b]) => {
       if (state.mode === 'transfer') {
@@ -637,7 +645,7 @@ function fillProfessions() {
     const title = document.createElement('strong'); title.textContent = professionLabels[value];
     const hint = document.createElement('small'); hint.textContent = professionHints[value];
     button.append(title, hint);
-    button.addEventListener('click', () => { state.profession = value; state.category = 'all'; $('search').value = ''; fillProfessions(); fillCategories(); chooseFirst(); });
+    button.addEventListener('click', () => { state.profession = value; state.category = 'all';  fillProfessions(); fillCategories(); chooseFirst(); });
     return button;
   }));
 }
@@ -651,7 +659,7 @@ function fillModes() {
     button.addEventListener('click', () => {
       state.mode = value;
       if (value === 'calculator' && !SEQUENCE_PROFESSIONS.includes(state.profession)) state.profession = 'blacksmithing';
-      state.category = 'all'; $('search').value = '';
+      state.category = 'all'; 
       fillModes(); fillProfessions(); fillCategories(); chooseFirst();
     });
     return button;
@@ -680,10 +688,10 @@ function renderResults() {
   const listHint = document.querySelector('.panelHead p');
   if (listHeading) listHeading.firstChild.textContent = state.mode === 'calculator' ? 'Oggetto di partenza ' : state.mode === 'transfer' ? 'Progressione Transfer Crafting ' : 'Ricette ';
   if (listHint) listHint.textContent = state.mode === 'calculator'
-    ? 'Scegli una categoria e l’oggetto iniziale della sequenza; puoi cercarlo per nome.'
+    ? 'Scegli una categoria e l’oggetto iniziale della sequenza.'
     : state.mode === 'transfer'
       ? 'La linea mostra oggetto trasferito → risultato normale → eventuale combo, con il livello ottenuto in ogni passaggio.'
-      : 'Scegli prima il tipo di crafting e la professione, poi filtra per categoria o cerca il nome.';
+      : 'Scegli prima il tipo di crafting e la professione, poi filtra per categoria.';
   const list = $('results');
   list.replaceChildren();
   if (!matching.length) {
@@ -1090,7 +1098,7 @@ function renderDetail() {
   if (!recipe) {
     pane.replaceChildren();
     const title = document.createElement('h2'); title.textContent = 'Nessuna ricetta';
-    const note = document.createElement('p'); note.className = 'muted'; note.textContent = 'Scegli una categoria o cambia la ricerca.';
+    const note = document.createElement('p'); note.className = 'muted'; note.textContent = 'Scegli una categoria o cambia professione.';
     pane.append(title, note);
     return;
   }
@@ -1285,7 +1293,7 @@ async function loadPrices(preserveOld = false, forceRefresh = preserveOld) {
   status((preserveOld ? 'Aggiornamento' : 'Caricamento') + ' prezzi di Vaizel · Europa…');
   try {
     const result = await getJSON('/api/prices?server=' + state.server + (forceRefresh ? '&refresh=' + Date.now() : ''));
-    state.prices = new Map(result.items.map(item => [String(item.item_key), { name: item.name, price: item.price, listings: item.listings }]));
+    state.prices = new Map(result.items.map(item => [String(item.item_key), { name: item.name, price: item.price, listings: item.listings, changePct: item.change_pct }]));
     state.fetchedAt = result.retrieved_at;
     savePriceHistory(state.prices, Date.now());
     const time = new Date(state.fetchedAt).toLocaleString('it-IT');
@@ -1313,6 +1321,5 @@ $('closeMarketModal').addEventListener('click', () => $('marketModal').close());
 $('marketModal').addEventListener('click', event => { if (event.target === $('marketModal')) $('marketModal').close(); });
 window.addEventListener('resize', () => { const dialog = $('marketModal'); if (dialog.open && dialog.dataset.itemKey) drawPriceChart(dialog.dataset.itemKey, modalHistory); });
 
-$('search').addEventListener('input', chooseFirst);
 setInterval(() => loadPrices(true, false), AUTO_REFRESH_INTERVAL_MS);
 init().catch(error => status('Impossibile caricare i dati: ' + error.message + '. Riprova fra poco.', 'error'));
