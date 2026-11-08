@@ -363,6 +363,13 @@ function renderRecommendations() {
 function itemLevelDescription(key) {
   const item = state.graph.items?.[String(key)];
   if (item?.level) return 'Livello oggetto ' + item.level;
+  const itemName = nameOf(key);
+  // Global item-card tiers documented by the publisher of the crafting dataset.
+  if (/^Artisan's Splendent /.test(itemName)) return 'Livello oggetto 44';
+  if (/^Artisan's /.test(itemName) && ['weapon', 'armor', 'accessory'].includes(item?.mc)) return 'Livello oggetto 39';
+  if (/^Expert's Splendent /.test(itemName)) return 'Livello oggetto 35';
+  if (/^Expert's /.test(itemName) && ['weapon', 'armor', 'accessory'].includes(item?.mc)) return 'Livello oggetto 28';
+  if (/^Splendent /.test(itemName) && item?.g === 21) return 'Livello oggetto 22';
   for (const [, recipe] of recipes()) {
     if (recipe.type !== 'transfer') continue;
     const levels = TRANSFER_LEVELS[transferStageNumber(recipe)];
@@ -371,7 +378,7 @@ function itemLevelDescription(key) {
     if (recipe.combo && String(recipe.combo) === String(key)) return 'Livello oggetto ' + levels.combo;
     if (String(recipe.transferFrom) === String(key)) return 'Livello oggetto ' + levels.from;
   }
-  if (/^(Splendent )?(True|Star) Dragon Lord /.test(nameOf(key))) return 'Livello oggetto ' + (nameOf(key).startsWith('Splendent ') ? 70 : 63);
+  if (/^(Splendent )?(True|Star) Dragon Lord /.test(nameOf(key))) return 'Livello oggetto ' + (nameOf(key).startsWith('Splendent ') ? 70 : 62);
   return 'Livello oggetto non disponibile';
 }
 function appendItemLevel(parent, key) {
@@ -463,7 +470,7 @@ function professionRecipes() {
 }
 
 const TRANSFER_LEVELS = {
-  1: { from: 63, to: 70, guaranteed: true },
+  1: { from: 62, to: 70, guaranteed: true },
   2: { from: 70, to: 78, combo: 86 },
   3: { from: 78, to: 86, guaranteed: true },
   4: { from: 86, to: 94, combo: 102 },
@@ -647,7 +654,7 @@ function renderResults() {
       ? 'Oggetto di partenza · ' + sequenceFor(id).length + ' passaggi'
       : state.mode === 'transfer'
         ? 'Da ' + nameOf(recipe.transferFrom) + ' · Passaggio ' + transferStageNumber(recipe) + '/5 · ' + transferLevelLabel(recipe)
-        : (categoryLabels[categoryOf(recipe)] || 'Materiali') + ' · ' + masteryLabel(recipe.ml) + (recipe.safe ? ' · Sicuro · livello 63 vincolato' : recipe.successChance != null ? ' · Combo · risultato livello 70' : '');
+        : (categoryLabels[categoryOf(recipe)] || 'Materiali') + ' · ' + masteryLabel(recipe.ml) + (recipe.safe ? ' · Sicuro · livello 62 vincolato' : recipe.successChance != null ? ' · Combo · risultato livello 70' : '');
     sub.className = 'resultMeta';
     appendItemLevel(text, recipe.out); text.append(sub);
     button.append(icons, text);
@@ -740,7 +747,7 @@ function renderSequenceCalculator(rootId) {
   const title = document.createElement('h2'); title.className = 'itemGrade' + gradeClass(root.out); title.textContent = 'Calculator · ' + nameOf(root.out);
   titleRow.append(iconOf(root.out, 'large'), title); pane.append(titleRow);
   const intro = document.createElement('p'); intro.className = 'calculatorIntro';
-  intro.textContent = 'Inserisci i tentativi e le combo realmente ottenute a ogni passaggio. Per le ricette normali i risultati base sono craft tentati meno combo; nelle ricette rischiose inserisci anche i risultati Lv. 63. Le fasi a zero sono saltate e il ricavo considera solo le combo della fase finale eseguita; al ricavo viene sottratta la tassa del 10%.';
+  intro.textContent = 'Inserisci i tentativi e le combo realmente ottenute a ogni passaggio. Per le ricette normali i risultati base sono craft tentati meno combo; nelle ricette rischiose inserisci anche i risultati Lv. 62. Le fasi a zero sono saltate e il ricavo considera solo le combo della fase finale eseguita; al ricavo viene sottratta la tassa del 10%.';
   pane.append(intro);
 
   const modeWrap = document.createElement('fieldset'); modeWrap.className = 'materialMode';
@@ -782,11 +789,11 @@ function renderSequenceCalculator(rootId) {
     head.append(iconOf(recipe.out));
     const headText = document.createElement('div'); const headName = document.createElement('strong'); headName.textContent = (index + 1) + '. ' + nameOf(recipe.out);
     const headMeta = document.createElement('small'); headMeta.textContent = recipe.combo ? 'Risultato: ' + nameOf(recipe.out) + ' · combo: ' + nameOf(recipe.combo) : 'Risultato normale';
-    headText.append(headName, headMeta); head.append(headText); stage.append(head);
+    headText.append(headName); appendItemLevel(headText, recipe.out); headText.append(headMeta); head.append(headText); stage.append(head);
 
     const fields = document.createElement('div'); fields.className = 'calculatorStageInputs';
     const risky = recipe.successChance != null && !recipe.safe;
-    const stageInputs = [['crafts', 'Craft tentati'], ...(risky ? [['normal', 'Risultati Lv. 63']] : []), ['combo', risky ? 'Combo Lv. 70 ottenute' : 'Combo ottenute']];
+    const stageInputs = [['crafts', 'Craft tentati'], ...(risky ? [['normal', 'Risultati Lv. 62']] : []), ['combo', risky ? 'Combo Lv. 70 ottenute' : 'Combo ottenute']];
     for (const [field, labelText] of stageInputs) {
       const wrap = document.createElement('div'); const label = document.createElement('label'); label.textContent = labelText;
       if (field === 'combo') {
@@ -1016,7 +1023,7 @@ function renderDetail() {
   if (recipe.type !== 'transfer') {
     const marketActions = document.createElement('div'); marketActions.className = 'marketActions';
     const targets = recipe.combo && recipe.successChance != null && !recipe.safe
-      ? [[recipe.out, 'Mercato Lv. 63'], [recipe.combo, 'Mercato combo Lv. 70']]
+      ? [[recipe.out, 'Mercato Lv. 62'], [recipe.combo, 'Mercato combo Lv. 70']]
       : [[recipe.combo || recipe.out, 'Prezzo mercato']];
     for (const [key, label] of targets) {
       const marketButton = document.createElement('button'); marketButton.className = 'marketButton'; marketButton.type = 'button'; marketButton.textContent = label;
@@ -1027,7 +1034,7 @@ function renderDetail() {
     titleRow.append(marketActions);
   }
   const meta = document.createElement('div'); meta.className = 'detailMeta muted';
-  meta.textContent = (recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' › ' + (professionLabels[recipe.p] || recipe.p || 'Crafting') + ' › ' + (categoryLabels[categoryOf(recipe)] || categoryOf(recipe)) + ' · ' + masteryLabel(recipe.ml) + ' · ' + (recipe.outq || 1) + ' per tentativo' + (recipe.type === 'transfer' ? ' · Passaggio ' + transferStageNumber(recipe) + '/5 · ' + transferLevelLabel(recipe) : recipe.safe ? ' · risultato sicuro livello 63' : recipe.successChance != null ? ' · combo livello 70' : '');
+  meta.textContent = (recipe.type === 'transfer' ? 'Transfer Crafting' : 'Crafting') + ' › ' + (professionLabels[recipe.p] || recipe.p || 'Crafting') + ' › ' + (categoryLabels[categoryOf(recipe)] || categoryOf(recipe)) + ' · ' + masteryLabel(recipe.ml) + ' · ' + (recipe.outq || 1) + ' per tentativo' + (recipe.type === 'transfer' ? ' · Passaggio ' + transferStageNumber(recipe) + '/5 · ' + transferLevelLabel(recipe) : recipe.safe ? ' · risultato sicuro livello 62' : recipe.successChance != null ? ' · combo livello 70' : '');
   const control = document.createElement('div'); control.className = 'controls';
   const quantityWrap = document.createElement('div');
   const quantityLabel = document.createElement('label'); quantityLabel.htmlFor = 'craftQuantity'; quantityLabel.textContent = 'Quantità da craftare';
@@ -1094,10 +1101,10 @@ function renderDetail() {
   const unitProfit = ownUnitCost == null || marketUnitNet == null ? null : marketUnitNet - ownUnitCost;
   const shownMarketCost = isLevel70Combo ? marketAttempt.cost : marketUnitCost;
   const shownOwnCost = isLevel70Combo ? ownAttempt.cost : ownUnitCost;
-  const level63Price = baseOutput?.price == null ? null : Number(baseOutput.price);
-  const level63Net = netSale(level63Price);
+  const level62Price = baseOutput?.price == null ? null : Number(baseOutput.price);
+  const level62Net = netSale(level62Price);
   const level70Net = netSale(marketUnitPrice);
-  const level63Profit = ownAttempt.cost == null || level63Net == null ? null : level63Net - ownAttempt.cost;
+  const level62Profit = ownAttempt.cost == null || level62Net == null ? null : level62Net - ownAttempt.cost;
   const level70Profit = ownAttempt.cost == null || level70Net == null ? null : level70Net - ownAttempt.cost;
   const missingBuyNames = marketAttempt.missing.map(nameOf);
   const missingBuyNote = missingBuyNames.length === 1
@@ -1111,15 +1118,15 @@ function renderDetail() {
   summaryCards.push(box(recipe.combo ? 'Combo al 25% attese' : 'Oggetti attesi', recipe.combo ? formatAttempts(expectedComboActivations) : formatAttempts(expectedOutput), recipe.combo ? (recipe.successChance != null && !recipe.safe ? formatAttempts(expectedComboResults) + ' combo riuscite stimate dopo i possibili fallimenti' : craftCount + ' craft × ' + formatPercent(comboRate * 100) + '% · media') : 'Risultato previsto da ' + craftCount + ' craft', isLevel70Combo ? 'wide' : ''));
   if (isLevel70Combo) {
     summaryCards.push(
-      box('Prezzo mercato risultato normale Lv. 63', level63Price == null ? '—' : format(level63Price) + ' Kina', baseOutput ? (baseOutput.listings || 0) + ' annunci · prezzo minimo' : 'Nessun annuncio'),
+      box('Prezzo mercato risultato normale Lv. 62', level62Price == null ? '—' : format(level62Price) + ' Kina', baseOutput ? (baseOutput.listings || 0) + ' annunci · prezzo minimo' : 'Nessun annuncio'),
       box('Prezzo mercato combo Lv. 70', marketUnitPrice == null ? '—' : format(marketUnitPrice) + ' Kina', output ? (output.listings || 0) + ' annunci · prezzo minimo' : 'Nessun annuncio')
     );
     summaryCards.push(
-      box('Ricavo netto Lv. 63', level63Net == null ? '—' : format(level63Net) + ' Kina', 'Prezzo mercato meno tassa di vendita 10%'),
+      box('Ricavo netto Lv. 62', level62Net == null ? '—' : format(level62Net) + ' Kina', 'Prezzo mercato meno tassa di vendita 10%'),
       box('Ricavo netto combo Lv. 70', level70Net == null ? '—' : format(level70Net) + ' Kina', 'Prezzo mercato meno tassa di vendita 10%')
     );
     summaryCards.push(
-      box('Guadagno / perdita netta se esce Lv. 63', level63Profit == null ? '—' : (level63Profit >= 0 ? '+' : '−') + format(Math.abs(level63Profit)) + ' Kina', level63Profit == null ? 'Servono costo craftato e prezzo Lv. 63' : 'Ricavo netto Lv. 63 − costo di 1 craft · inserzione esclusa', 'outcomeProfit ' + (level63Profit == null ? '' : level63Profit >= 0 ? 'gain' : 'loss')),
+      box('Guadagno / perdita netta se esce Lv. 62', level62Profit == null ? '—' : (level62Profit >= 0 ? '+' : '−') + format(Math.abs(level62Profit)) + ' Kina', level62Profit == null ? 'Servono costo craftato e prezzo Lv. 62' : 'Ricavo netto Lv. 62 − costo di 1 craft · inserzione esclusa', 'outcomeProfit ' + (level62Profit == null ? '' : level62Profit >= 0 ? 'gain' : 'loss')),
       box('Guadagno / perdita netta se esce combo Lv. 70', level70Profit == null ? '—' : (level70Profit >= 0 ? '+' : '−') + format(Math.abs(level70Profit)) + ' Kina', level70Profit == null ? 'Servono costo craftato e prezzo Lv. 70' : 'Ricavo netto Lv. 70 − costo di 1 craft · inserzione esclusa', 'outcomeProfit ' + (level70Profit == null ? '' : level70Profit >= 0 ? 'gain' : 'loss'))
     );
   } else {
@@ -1129,7 +1136,7 @@ function renderDetail() {
   numbers.append(...summaryCards);
   pane.append(numbers);
   const buyFinishedLoss = isLevel70Combo
-    ? [level63Profit, level70Profit].some(profit => profit != null && profit < 0)
+    ? [level62Profit, level70Profit].some(profit => profit != null && profit < 0)
     : !recipe.bound && unitProfit != null && unitProfit < 0;
   if (buyFinishedLoss) {
     const advice = document.createElement('p');
