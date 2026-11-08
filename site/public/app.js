@@ -788,6 +788,12 @@ function renderSequenceCalculator(rootId) {
     const stageInputs = [['crafts', 'Craft tentati'], ...(risky ? [['normal', 'Risultati Lv. 63']] : []), ['combo', risky ? 'Combo Lv. 70 ottenute' : 'Combo ottenute']];
     for (const [field, labelText] of stageInputs) {
       const wrap = document.createElement('div'); const label = document.createElement('label'); label.textContent = labelText;
+      if (field === 'combo') {
+        const expected = document.createElement('span'); expected.className = 'expectedComboBadge';
+        expected.textContent = 'Attese: ' + formatAttempts(values.crafts * 0.25);
+        expected.title = values.crafts + ' craft × 25%: valore medio, non garantito';
+        label.append(expected);
+      }
       const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.step = '1'; input.value = String(values[field]); input.setAttribute('aria-label', labelText + ' · ' + nameOf(recipe.out));
       input.addEventListener('change', () => {
         const nextValue = Math.max(0, Math.floor(Number(input.value) || 0));
