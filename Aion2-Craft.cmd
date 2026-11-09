@@ -90,6 +90,8 @@ const MAX_CRAFT_SUCCESS = 0.9464;
 const MAX_COMBO_SUCCESS = 0.23 / (MAX_CRAFT_SUCCESS * 0.25);
 const MARKET_TAX_RATE = 0.10;
 const AUTO_REFRESH_INTERVAL_MS = 60_000;
+const HISTORY_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
+const historyRequests = new Map();
 const netSale = value => value == null ? null : Number(value) * (1 - MARKET_TAX_RATE);
 const QUICK_PRICE_ITEMS = [
   '610511013', '610511015', '610511014',
@@ -157,13 +159,13 @@ function renderQuickPrices() {
     const variation = document.createElement('small'); variation.className = 'quickPriceVariation';
     const change = market?.changePct == null ? NaN : Number(market.changePct);
     if (currentPrice == null || !Number.isFinite(change)) {
-      variation.textContent = currentPrice == null ? 'Prezzo non disponibile' : 'Variazione non disponibile';
+      variation.textContent = currentPrice == null ? 'Prezzo non disponibile' : 'Variazione 24h non disponibile';
     } else {
       variation.classList.add(change > 0 ? 'up' : change < 0 ? 'down' : 'flat');
       const arrow = document.createElement('span'); arrow.setAttribute('aria-hidden', 'true');
       arrow.textContent = change > 0 ? '↑' : change < 0 ? '↓' : '→';
       variation.title = 'Variazione del prezzo nella finestra di 24 ore';
-      variation.append(arrow, ` ${change > 0 ? '+' : ''}${formatPercent(change)}%`);
+      variation.append('Variazione 24h ', arrow, ` ${change > 0 ? '+' : ''}${formatPercent(change)}%`);
     }
     text.append(name, price, variation);
     const itemIcon = iconOf(key, 'quickPriceIcon');
@@ -174,12 +176,24 @@ function renderQuickPrices() {
   }));
 }
 
+function loadSharedHistory(query) {
+  const key = query.toString();
+  const existing = historyRequests.get(key);
+  if (existing && existing.until > Date.now()) return existing.result;
+  const entry = { until: Date.now() + HISTORY_REFRESH_INTERVAL_MS };
+  entry.result = getJSON('/api/history?' + key).catch(error => {
+    entry.until = Date.now() + 60_000;
+    throw error;
+  });
+  historyRequests.set(key, entry);
+  return entry.result;
+}
+
 async function loadQuickPriceHistory() {
   try {
     const query = new URLSearchParams({ server: String(state.server), items: QUICK_PRICE_ITEMS.join(',') });
-    const response = await fetch('/api/history?' + query, { cache: 'no-cache' });
-    const result = await response.json();
-    if (!response.ok || !result.histories) return;
+    const result = await loadSharedHistory(query);
+    if (!result.histories) return;
     state.quickPriceHistory = new Map(Object.entries(result.histories));
     renderQuickPrices();
   } catch { /* Usa lo storico locale del browser come ripiego. */ }
@@ -352,7 +366,7 @@ function drawPriceChart(itemKey, historyOverride = null) {
   return { points, average, current: currentValue, min: dataMin, max: dataMax };
 }
 
-async function openMarketModal(itemKey, forceRefresh = false) {
+async function openMarketModal(itemKey) {
   const dialog = $('marketModal');
   dialog.dataset.itemKey = String(itemKey);
   $('marketModalTitle').textContent = 'Prezzo mercato · ' + nameOf(itemKey);
@@ -363,9 +377,8 @@ async function openMarketModal(itemKey, forceRefresh = false) {
   if (!dialog.open) dialog.showModal();
   let points = getPriceHistory(itemKey);
   try {
-    const response = await fetch('/api/history?server=' + state.server + '&item=' + encodeURIComponent(itemKey) + (forceRefresh ? '&refresh=' + Date.now() : ''), { cache: 'no-cache' });
-    const shared = await response.json();
-    if (response.ok && Array.isArray(shared.points) && shared.points.length) points = shared.points;
+    const shared = await loadSharedHistory(new URLSearchParams({ server: String(state.server), item: String(itemKey) }));
+    if (Array.isArray(shared.points) && shared.points.length) points = shared.points;
   } catch { /* Local browser history remains available when the collector is not configured. */ }
   if (dialog.dataset.itemKey !== String(itemKey)) return;
   modalHistory = points;
@@ -385,7 +398,7 @@ async function openMarketModal(itemKey, forceRefresh = false) {
     ['Minimo 7 giorni', historyValues.length ? format(Math.min(...historyValues)) + ' Kina' : '—', ''],
     ['Massimo 7 giorni', historyValues.length ? format(Math.max(...historyValues)) + ' Kina' : '—', ''],
     ['Media 7 giorni', average == null ? '—' : format(average) + ' Kina', ''],
-    ['Variazione', change == null ? '—' : (change > 0 ? '+' : '') + format(change) + ' Kina', change == null ? '' : change > 0 ? 'up' : change < 0 ? 'down' : 'flat', changePercent == null ? '' : (changePercent > 0 ? '+' : '') + changePercent.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + '%'],
+    ['Variazione dall’inizio del grafico', change == null ? '—' : (change > 0 ? '+' : '') + format(change) + ' Kina', change == null ? '' : change > 0 ? 'up' : change < 0 ? 'down' : 'flat', changePercent == null ? '' : (changePercent > 0 ? '+' : '') + changePercent.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + '%'],
   ].map(([label, value, tone, detail]) => {
     const card = document.createElement('div'); card.className = 'marketStat' + (tone ? ' ' + tone : '');
     const title = document.createElement('small'); title.textContent = label;
@@ -491,18 +504,17 @@ async function renderOpenMarketRecommendations() {
   if (!targets.size) {
     list.replaceChildren(); const empty = document.createElement('p'); empty.className = 'recommendationEmpty'; empty.textContent = state.prices.size ? 'Nessun Artisan Splendent senza annunci nei dati disponibili.' : 'In attesa dei prezzi del mercato.'; list.append(empty); return;
   }
-  if (Date.now() - openMarketHistoryCache.at > 60_000) {
+  if (Date.now() - openMarketHistoryCache.at > HISTORY_REFRESH_INTERVAL_MS) {
     const histories = {}; const keys = [...targets.keys()]; let loaded = false;
     for (let start = 0; start < keys.length; start += 50) {
       try {
         const query = new URLSearchParams({ server: String(state.server), items: keys.slice(start, start + 50).join(',') });
-        const response = await fetch('/api/history?' + query, { cache: 'no-cache' });
-        const data = await response.json();
-        if (response.ok && data.histories) { Object.assign(histories, data.histories); loaded = true; }
+        const data = await loadSharedHistory(query);
+        if (data.histories) { Object.assign(histories, data.histories); loaded = true; }
       } catch { /* Local history is used when shared history is unavailable. */ }
     }
     if (requestId !== openMarketRequest) return;
-    openMarketHistoryCache = { at: Date.now(), histories: loaded ? histories : {} };
+    openMarketHistoryCache = { at: Date.now() - (loaded ? 0 : HISTORY_REFRESH_INTERVAL_MS - 60_000), histories };
   }
   if (requestId !== openMarketRequest) return;
   const model = createCostModel(state.graph, unitPrice, faction, key => localStorage.getItem(overrideKey(key)) === '0', { optimizeMaterials: true });
@@ -1379,13 +1391,13 @@ async function loadPrices(preserveOld = false, forceRefresh = preserveOld) {
     status(state.prices.size + ' oggetti dal mercato · consultazione ' + time + ' · prezzi minimi degli annunci', 'good');
     renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail(); void loadQuickPriceHistory();
     const dialog = $('marketModal');
-    if (dialog.open && dialog.dataset.itemKey) await openMarketModal(dialog.dataset.itemKey, true);
+    if (dialog.open && dialog.dataset.itemKey) await openMarketModal(dialog.dataset.itemKey);
   } catch (error) {
     if (!preserveOld) state.prices = new Map();
     status((preserveOld ? 'Aggiornamento non riuscito; restano i prezzi precedenti: ' : 'Prezzi non disponibili: ') + error.message + '. Puoi inserire prezzi manuali nelle ricette.', 'error');
     renderQuickPrices(); renderRecommendations(); renderResults(); renderDetail(); void loadQuickPriceHistory();
     const dialog = $('marketModal');
-    if (dialog.open && dialog.dataset.itemKey) await openMarketModal(dialog.dataset.itemKey, true);
+    if (dialog.open && dialog.dataset.itemKey) await openMarketModal(dialog.dataset.itemKey);
   }
 }
 
