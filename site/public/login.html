@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accesso · Aion 2 Craft</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root{color-scheme:dark;font-family:system-ui,sans-serif;background:#0d1320;color:#eef2fc}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box}
+    main{width:min(100%,380px);box-sizing:border-box;padding:28px;border:1px solid #365474;border-radius:18px;background:#162235}
+    h1{font-size:25px;margin:0 0 20px}h1 span{color:#9dd9ff}
+    label,input,button{display:block;width:100%;box-sizing:border-box}
+    input,button{font:inherit;padding:11px;margin-top:8px;border:1px solid #456383;border-radius:8px}
+    button{background:#9dd9ff;color:#102039;font-weight:750;cursor:pointer;margin-top:14px}
+    p{color:#ffc4bd}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Aion 2 <span>Craft</span></h1>
+    <form method="post" action="/auth/login">
+      <label for="password">Password del sito</label>
+      <input id="password" name="password" type="password" required autocomplete="current-password" maxlength="256">
+      <p id="message" role="status" hidden></p>
+      <button type="submit">Entra</button>
+    </form>
+  </main>
+  <script>
+    const query = new URLSearchParams(location.search);
+    const message = document.getElementById('message');
+    if (query.has('blocked')) {
+      message.textContent = 'Troppi tentativi. Riprova quando sono trascorsi 15 minuti dal blocco.';
+    } else if (query.has('error')) {
+      message.textContent = 'Password errata. Dopo tre errori l’accesso viene bloccato per 15 minuti.';
+    }
+    message.hidden = !message.textContent;
+  </script>
+</body>
+</html>
