@@ -841,9 +841,18 @@ function renderSequenceCalculator(rootId) {
     pane.append(title); return;
   }
 
+  const storageKey = 'aion2craft:calculator:' + state.server + ':' + rootId;
   const titleRow = document.createElement('div'); titleRow.className = 'titleRow';
   const title = document.createElement('h2'); title.className = 'itemGrade' + gradeClass(root.out); title.textContent = 'Calculator · ' + nameOf(root.out);
-  titleRow.append(iconOf(root.out, 'large'), title); pane.append(titleRow);
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = 'marketButton';
+  reset.textContent = 'Azzera tutto';
+  reset.addEventListener('click', () => {
+    localStorage.removeItem(storageKey);
+    renderSequenceCalculator(rootId);
+  });
+  titleRow.append(iconOf(root.out, 'large'), title, reset); pane.append(titleRow);
   const intro = document.createElement('p'); intro.className = 'calculatorIntro';
   intro.textContent = 'Inserisci i tentativi e le combo realmente ottenute a ogni passaggio. Per le ricette normali i risultati base sono craft tentati meno combo; nelle ricette rischiose inserisci anche i risultati Lv. 62. Le fasi a zero sono saltate e il ricavo considera solo le combo della fase finale eseguita; al ricavo viene sottratta la tassa del 10%.';
   pane.append(intro);
@@ -863,7 +872,6 @@ function renderSequenceCalculator(rootId) {
   }
   modeWrap.append(modeLabel, sourceChoices); pane.append(modeWrap);
 
-  const storageKey = 'aion2craft:calculator:' + state.server + ':' + rootId;
   let run;
   try { run = JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { run = null; }
   if (!run || !Array.isArray(run.steps) || run.steps.length !== steps.length) run = { steps: steps.map(() => ({ crafts: 0, normal: 0, combo: 0 })) };
