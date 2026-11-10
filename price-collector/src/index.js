@@ -11,6 +11,7 @@ async function initialize(db) {
     PRIMARY KEY (server_id, sampled_at)
   )`).run();
   await db.prepare('CREATE INDEX IF NOT EXISTS idx_price_snapshots_server_time ON price_snapshots(server_id, sampled_at DESC)').run();
+  await db.prepare('CREATE INDEX IF NOT EXISTS idx_price_snapshots_retention ON price_snapshots(sampled_at)').run();
 }
 
 async function getServers() {

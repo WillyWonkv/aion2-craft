@@ -1,11 +1,11 @@
 # Collector prezzi ogni minuto
 
-Il Worker legge i prezzi Aion2Market per gli ID elencati in `SERVER_IDS`, salva uno snapshot compatto in D1 ogni minuto e conserva solo le ultime 7 giorni. A ogni esecuzione elimina i record più vecchi di un giorno, così lo spazio viene riutilizzato. L'interfaccia aggiorna i prezzi ogni minuto e i grafici mostrano le ultime 7 giorni (fino a 10.080 rilevazioni). La Function Pages `site/functions/api/history.js` legge lo stesso database; il grafico usa lo storico condiviso quando è configurato e mantiene lo storico locale come ripiego.
+Il Worker legge i prezzi Aion2Market per gli ID elencati in `SERVER_IDS` e salva uno snapshot in D1 ogni minuto. Conserva gli ultimi 7 giorni e usa un indice temporale per rimuovere i record scaduti. I prezzi correnti si aggiornano ogni minuto. La Function Pages `site/functions/api/history.js` legge al massimo uno snapshot per ogni intervallo di 5 minuti, fino a 2.016 campioni in sette giorni. Il grafico mantiene lo storico locale come ripiego.
 
 ## Attivazione Cloudflare
 
 1. Nel dashboard Cloudflare crea un database D1 chiamato `aion2-price-history` e copia il suo `database_id`.
-2. Apri `wrangler.jsonc` e controlla il database ID. `SERVER_IDS` è impostato a `11303`, il mercato di Vaizel Europa (Elyos); il Worker raccoglie solo questo server. La conservazione è impostata a 1 giorno per contenere lo spazio con le rilevazioni al minuto.
+2. Apri `wrangler.jsonc` e controlla il database ID. `SERVER_IDS` è impostato a `11303`, il mercato di Vaizel Europa (Elyos). La conservazione è impostata a 7 giorni.
 3. Installa Node.js se non è già presente, apri il terminale nella radice del repository ed esegui `npx wrangler login`.
 4. Dalla radice del repository esegui `npx wrangler deploy --config price-collector/wrangler.jsonc`. Il deploy registra anche il Cron Trigger ogni minuto.
 5. In **Workers & Pages**, apri il progetto Pages del sito e vai in **Settings → Bindings → Add → D1 database**. Imposta il nome variabile esattamente a `PRICE_HISTORY`, scegli `aion2-price-history`, salva e fai un nuovo deploy di Pages.
