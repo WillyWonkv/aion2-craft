@@ -58,6 +58,7 @@ $html = @'
     .historyEntry .marketButton,.calculatorSaveRow .marketButton{margin-left:0}.calculatorSaveRow{gap:8px;flex-wrap:wrap}@media(max-width:520px){.craftSessionList .historyEntry{flex-wrap:wrap}.historyEntryOpen{flex-basis:100%}}
     #openMarketList{max-height:420px;align-content:start;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
     #openMarketList::-webkit-scrollbar{display:none}
+    .openMarketHeading{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.openMarketFilters{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}.openMarketFilters .marketButton{margin:0}.openMarketFilters [aria-pressed=true]{background:#87ccfa;color:#122338;border-color:#87ccfa}
   </style>
 </head>
 <body>
@@ -67,7 +68,7 @@ $html = @'
     <div id="status" class="status" role="status" aria-live="polite">Caricamento ricette e prezzi di Vaizel…</div>
     <section class="recommendations" aria-labelledby="recommendationsTitle"><h2 id="recommendationsTitle">Craft consigliati</h2><p>Confronta costo dei materiali e ricavo dopo il 10% di vendita e il 2% di inserzione.</p><div id="recommendationList" class="recommendationList"></div></section>
     <section class="recommendations" aria-labelledby="buyRecommendationsTitle"><h2 id="buyRecommendationsTitle">Acquisti consigliati</h2><p>Artisan's Splendent, True Dragon Lord Lv. 62 e Splendent True Dragon Lord Lv. 70: fino a 10 oggetti che costano meno comprati che craftati. Risparmio = costo craftato meno prezzo di acquisto, senza tassa di vendita.</p><div id="buyRecommendationList" class="recommendationList"></div></section>
-    <section class="recommendations" aria-labelledby="openMarketTitle"><h2 id="openMarketTitle">Oggetti senza annunci</h2><p>Artisan Splendent Lv. 44 e True Dragon Lord Lv. 62 e 70. Il prezzo suggerito usa la media delle rilevazioni valide degli ultimi 7 giorni.</p><div id="openMarketList" class="recommendationList" role="region" aria-labelledby="openMarketTitle" tabindex="0"></div></section>
+    <section class="recommendations" aria-labelledby="openMarketTitle"><div class="openMarketHeading"><h2 id="openMarketTitle">Oggetti senza annunci</h2><div id="openMarketFilters" class="openMarketFilters" role="group" aria-label="Filtra per livello"><button class="marketButton" type="button" data-tier="artisan" aria-pressed="true">Artisan</button><button class="marketButton" type="button" data-tier="62" aria-pressed="false">Lv. 62</button><button class="marketButton" type="button" data-tier="70" aria-pressed="false">Lv. 70</button></div></div><p>Il prezzo suggerito usa la media delle rilevazioni valide degli ultimi 7 giorni.</p><p id="openMarketEmpty" class="recommendationEmpty" hidden></p><div id="openMarketList" class="recommendationList" role="region" aria-labelledby="openMarketTitle" tabindex="0"></div></section>
     <section class="quickPrices" aria-labelledby="quickPricesTitle"><h2 id="quickPricesTitle">Prezzi rapidi del server</h2><div id="quickPriceList" class="quickPriceList"></div></section>
     <section class="quickPrices" aria-labelledby="buyWatchTitle" hidden><h2 id="buyWatchTitle">Da comprare</h2><div id="buyWatchList" class="recommendationList"></div></section>
     <section class="quickPrices" aria-labelledby="sellWatchTitle" hidden><h2 id="sellWatchTitle">Da vendere</h2><div id="sellWatchList" class="recommendationList"></div></section>
@@ -615,6 +616,23 @@ function renderRecommendations() {
 
 let openMarketHistoryCache = { at: 0, histories: {} };
 let openMarketRequest = 0;
+let openMarketTier = 'artisan';
+
+function filterOpenMarketCards() {
+  const list = $('openMarketList');
+  let visible = 0;
+  for (const card of list.querySelectorAll('[data-open-market-tier]')) {
+    card.hidden = card.dataset.openMarketTier !== openMarketTier;
+    if (!card.hidden) visible++;
+  }
+  const empty = $('openMarketEmpty');
+  empty.hidden = visible > 0;
+  empty.textContent = state.prices.size ? 'Nessun oggetto senza annunci per questo livello.' : 'In attesa dei prezzi del mercato.';
+  for (const button of $('openMarketFilters').querySelectorAll('button')) {
+    button.setAttribute('aria-pressed', String(button.dataset.tier === openMarketTier));
+  }
+}
+
 async function renderOpenMarketRecommendations() {
   const list = $('openMarketList');
   if (!list || !state.graph) return;
@@ -635,7 +653,7 @@ async function renderOpenMarketRecommendations() {
     }
   }
   if (!targets.size) {
-    list.replaceChildren(); const empty = document.createElement('p'); empty.className = 'recommendationEmpty'; empty.textContent = state.prices.size ? 'Nessun equipaggiamento senza annunci nei dati disponibili.' : 'In attesa dei prezzi del mercato.'; list.append(empty); return;
+    list.replaceChildren(); filterOpenMarketCards(); return;
   }
   if (Date.now() - openMarketHistoryCache.at > HISTORY_REFRESH_INTERVAL_MS) {
     const histories = {}; const keys = [...targets.keys()]; let loaded = false;
@@ -656,6 +674,7 @@ async function renderOpenMarketRecommendations() {
     const average = points.length ? points.reduce((sum, point) => sum + Number(point.p), 0) / points.length : null;
     const cost = entry.dragon ? model.ownAttempt(entry.recipe).cost : model.ownUnit(entry.key).cost;
     const card = document.createElement('button'); card.type = 'button'; card.className = 'recommendationCard';
+    card.dataset.openMarketTier = entry.dragon ? (entry.key === String(entry.recipe.out) ? '62' : '70') : 'artisan';
     const head = document.createElement('div'); head.className = 'recommendationHead';
     const text = document.createElement('div'); text.className = 'recommendationText';
     const title = document.createElement('strong'); title.className = 'itemGrade' + gradeClass(entry.key); title.textContent = nameOf(entry.key); title.title = title.textContent;
@@ -670,7 +689,16 @@ async function renderOpenMarketRecommendations() {
     return card;
   });
   list.replaceChildren(...cards);
+  filterOpenMarketCards();
 }
+
+$('openMarketFilters').addEventListener('click', event => {
+  const button = event.target.closest('button[data-tier]');
+  if (!button) return;
+  openMarketTier = button.dataset.tier;
+  filterOpenMarketCards();
+  $('openMarketList').scrollTop = 0;
+});
 
 function itemLevelDescription(key) {
   const item = state.graph.items?.[String(key)];

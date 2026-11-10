@@ -528,6 +528,23 @@ function renderRecommendations() {
 
 let openMarketHistoryCache = { at: 0, histories: {} };
 let openMarketRequest = 0;
+let openMarketTier = 'artisan';
+
+function filterOpenMarketCards() {
+  const list = $('openMarketList');
+  let visible = 0;
+  for (const card of list.querySelectorAll('[data-open-market-tier]')) {
+    card.hidden = card.dataset.openMarketTier !== openMarketTier;
+    if (!card.hidden) visible++;
+  }
+  const empty = $('openMarketEmpty');
+  empty.hidden = visible > 0;
+  empty.textContent = state.prices.size ? 'Nessun oggetto senza annunci per questo livello.' : 'In attesa dei prezzi del mercato.';
+  for (const button of $('openMarketFilters').querySelectorAll('button')) {
+    button.setAttribute('aria-pressed', String(button.dataset.tier === openMarketTier));
+  }
+}
+
 async function renderOpenMarketRecommendations() {
   const list = $('openMarketList');
   if (!list || !state.graph) return;
@@ -548,7 +565,7 @@ async function renderOpenMarketRecommendations() {
     }
   }
   if (!targets.size) {
-    list.replaceChildren(); const empty = document.createElement('p'); empty.className = 'recommendationEmpty'; empty.textContent = state.prices.size ? 'Nessun equipaggiamento senza annunci nei dati disponibili.' : 'In attesa dei prezzi del mercato.'; list.append(empty); return;
+    list.replaceChildren(); filterOpenMarketCards(); return;
   }
   if (Date.now() - openMarketHistoryCache.at > HISTORY_REFRESH_INTERVAL_MS) {
     const histories = {}; const keys = [...targets.keys()]; let loaded = false;
@@ -569,6 +586,7 @@ async function renderOpenMarketRecommendations() {
     const average = points.length ? points.reduce((sum, point) => sum + Number(point.p), 0) / points.length : null;
     const cost = entry.dragon ? model.ownAttempt(entry.recipe).cost : model.ownUnit(entry.key).cost;
     const card = document.createElement('button'); card.type = 'button'; card.className = 'recommendationCard';
+    card.dataset.openMarketTier = entry.dragon ? (entry.key === String(entry.recipe.out) ? '62' : '70') : 'artisan';
     const head = document.createElement('div'); head.className = 'recommendationHead';
     const text = document.createElement('div'); text.className = 'recommendationText';
     const title = document.createElement('strong'); title.className = 'itemGrade' + gradeClass(entry.key); title.textContent = nameOf(entry.key); title.title = title.textContent;
@@ -583,7 +601,16 @@ async function renderOpenMarketRecommendations() {
     return card;
   });
   list.replaceChildren(...cards);
+  filterOpenMarketCards();
 }
+
+$('openMarketFilters').addEventListener('click', event => {
+  const button = event.target.closest('button[data-tier]');
+  if (!button) return;
+  openMarketTier = button.dataset.tier;
+  filterOpenMarketCards();
+  $('openMarketList').scrollTop = 0;
+});
 
 function itemLevelDescription(key) {
   const item = state.graph.items?.[String(key)];
