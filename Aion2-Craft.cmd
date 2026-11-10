@@ -56,6 +56,8 @@ $html = @'
     .favoriteCard{position:relative}.watchChartButton{display:flex;align-items:center;gap:9px;background:none;border:0;color:#b8c7da;font:inherit;font-size:12px;text-align:left;padding:0;margin:0 26px 0 0;cursor:pointer}.watchChartButton:hover{color:#eef2fc}.watchRemoveButton{position:absolute;top:8px;right:8px;width:24px;height:24px;padding:0;border:0;border-radius:6px;background:transparent;color:#b8c7da;font:inherit;font-size:18px;line-height:1;cursor:pointer}.watchRemoveButton:hover{background:#60313b;color:#fff}
     .modeMenu .calculatorHistoryButton{margin-left:auto;min-width:44px;padding:6px 12px;font-size:23px;line-height:1}.calculatorSaveRow{display:flex;justify-content:flex-end;margin-top:12px}.craftSessionList .historyEntry{display:flex;align-items:center;gap:12px}.historyEntryOpen{flex:1;min-width:0;background:none;border:0;padding:4px;text-align:left;color:#eef2fc;font:inherit;cursor:pointer}.historyEntryOpen:hover strong{color:#9dd9ff}.historyEntryOpen:disabled{cursor:default}.historyDelete{color:#ffadb1;border-color:#754553}
     .historyEntry .marketButton,.calculatorSaveRow .marketButton{margin-left:0}.calculatorSaveRow{gap:8px;flex-wrap:wrap}@media(max-width:520px){.craftSessionList .historyEntry{flex-wrap:wrap}.historyEntryOpen{flex-basis:100%}}
+    #openMarketList{max-height:420px;align-content:start;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+    #openMarketList::-webkit-scrollbar{display:none}
   </style>
 </head>
 <body>
@@ -65,7 +67,7 @@ $html = @'
     <div id="status" class="status" role="status" aria-live="polite">Caricamento ricette e prezzi di Vaizel…</div>
     <section class="recommendations" aria-labelledby="recommendationsTitle"><h2 id="recommendationsTitle">Craft consigliati</h2><p>Confronta costo dei materiali e ricavo dopo il 10% di vendita e il 2% di inserzione.</p><div id="recommendationList" class="recommendationList"></div></section>
     <section class="recommendations" aria-labelledby="buyRecommendationsTitle"><h2 id="buyRecommendationsTitle">Acquisti consigliati</h2><p>Artisan's Splendent, True Dragon Lord Lv. 62 e Splendent True Dragon Lord Lv. 70: fino a 10 oggetti che costano meno comprati che craftati. Risparmio = costo craftato meno prezzo di acquisto, senza tassa di vendita.</p><div id="buyRecommendationList" class="recommendationList"></div></section>
-    <section class="recommendations" aria-labelledby="openMarketTitle"><h2 id="openMarketTitle">Artisan Splendent senza annunci</h2><p>Tutti gli equipaggiamenti oro Lv. 44 senza offerte disponibili. Il prezzo suggerito è la media delle rilevazioni valide nelle ultime 7 giorni: non garantisce una vendita. Nessun prezzo viene inventato quando manca lo storico.</p><div id="openMarketList" class="recommendationList"></div></section>
+    <section class="recommendations" aria-labelledby="openMarketTitle"><h2 id="openMarketTitle">Oggetti senza annunci</h2><p>Artisan Splendent Lv. 44 e True Dragon Lord Lv. 62 e 70. Il prezzo suggerito usa la media delle rilevazioni valide degli ultimi 7 giorni.</p><div id="openMarketList" class="recommendationList" role="region" aria-labelledby="openMarketTitle" tabindex="0"></div></section>
     <section class="quickPrices" aria-labelledby="quickPricesTitle"><h2 id="quickPricesTitle">Prezzi rapidi del server</h2><div id="quickPriceList" class="quickPriceList"></div></section>
     <section class="quickPrices" aria-labelledby="buyWatchTitle" hidden><h2 id="buyWatchTitle">Da comprare</h2><div id="buyWatchList" class="recommendationList"></div></section>
     <section class="quickPrices" aria-labelledby="sellWatchTitle" hidden><h2 id="sellWatchTitle">Da vendere</h2><div id="sellWatchList" class="recommendationList"></div></section>
@@ -620,17 +622,20 @@ async function renderOpenMarketRecommendations() {
   const faction = serverFaction() === 'Asmodian' ? 'dark' : 'light';
   const targets = new Map();
   for (const [id, recipe] of recipes()) {
-    const key = String(recipe.combo || '');
-    const item = state.graph.items?.[key];
-    const kind = item?.mc || state.graph.items?.[String(recipe.out)]?.mc;
-    const market = state.prices.get(key);
-    if (recipe.type !== 'crafting' || recipe.qr !== faction || !/^Artisan's Splendent /.test(nameOf(key)) || item?.g !== 41 || !['weapon', 'armor', 'accessory'].includes(kind)) continue;
-    // Only a returned zero-listing item confirms that there are no current offers.
-    if (!market || Number(market.listings) !== 0) continue;
-    targets.set(key, { id, recipe, key });
+    if (recipe.type !== 'crafting' || recipe.qr !== faction || recipe.bound) continue;
+    for (const key of [recipe.out, recipe.combo].filter(Boolean).map(String)) {
+      const item = state.graph.items?.[key];
+      const kind = item?.mc || state.graph.items?.[String(recipe.out)]?.mc;
+      const market = state.prices.get(key);
+      const dragon = /^(?:Splendent )?True Dragon Lord /.test(nameOf(key));
+      if ((!dragon && !/^Artisan's Splendent /.test(nameOf(key))) || item?.g !== 41 || !['weapon', 'armor', 'accessory'].includes(kind)) continue;
+      // A missing market record cannot confirm zero listings.
+      if (market?.listings == null || Number(market.listings) !== 0) continue;
+      targets.set(key, { id, recipe, key, dragon });
+    }
   }
   if (!targets.size) {
-    list.replaceChildren(); const empty = document.createElement('p'); empty.className = 'recommendationEmpty'; empty.textContent = state.prices.size ? 'Nessun Artisan Splendent senza annunci nei dati disponibili.' : 'In attesa dei prezzi del mercato.'; list.append(empty); return;
+    list.replaceChildren(); const empty = document.createElement('p'); empty.className = 'recommendationEmpty'; empty.textContent = state.prices.size ? 'Nessun equipaggiamento senza annunci nei dati disponibili.' : 'In attesa dei prezzi del mercato.'; list.append(empty); return;
   }
   if (Date.now() - openMarketHistoryCache.at > HISTORY_REFRESH_INTERVAL_MS) {
     const histories = {}; const keys = [...targets.keys()]; let loaded = false;
@@ -649,7 +654,7 @@ async function renderOpenMarketRecommendations() {
   const cards = [...targets.values()].sort((a, b) => nameOf(a.key).localeCompare(nameOf(b.key))).map(entry => {
     const points = (openMarketHistoryCache.histories[entry.key] || getPriceHistory(entry.key)).filter(point => point.t >= Date.now() - HISTORY_LIMIT && Number(point.p) > 0);
     const average = points.length ? points.reduce((sum, point) => sum + Number(point.p), 0) / points.length : null;
-    const cost = model.ownUnit(entry.key).cost;
+    const cost = entry.dragon ? model.ownAttempt(entry.recipe).cost : model.ownUnit(entry.key).cost;
     const card = document.createElement('button'); card.type = 'button'; card.className = 'recommendationCard';
     const head = document.createElement('div'); head.className = 'recommendationHead';
     const text = document.createElement('div'); text.className = 'recommendationText';

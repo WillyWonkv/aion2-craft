@@ -535,17 +535,20 @@ async function renderOpenMarketRecommendations() {
   const faction = serverFaction() === 'Asmodian' ? 'dark' : 'light';
   const targets = new Map();
   for (const [id, recipe] of recipes()) {
-    const key = String(recipe.combo || '');
-    const item = state.graph.items?.[key];
-    const kind = item?.mc || state.graph.items?.[String(recipe.out)]?.mc;
-    const market = state.prices.get(key);
-    if (recipe.type !== 'crafting' || recipe.qr !== faction || !/^Artisan's Splendent /.test(nameOf(key)) || item?.g !== 41 || !['weapon', 'armor', 'accessory'].includes(kind)) continue;
-    // Only a returned zero-listing item confirms that there are no current offers.
-    if (!market || Number(market.listings) !== 0) continue;
-    targets.set(key, { id, recipe, key });
+    if (recipe.type !== 'crafting' || recipe.qr !== faction || recipe.bound) continue;
+    for (const key of [recipe.out, recipe.combo].filter(Boolean).map(String)) {
+      const item = state.graph.items?.[key];
+      const kind = item?.mc || state.graph.items?.[String(recipe.out)]?.mc;
+      const market = state.prices.get(key);
+      const dragon = /^(?:Splendent )?True Dragon Lord /.test(nameOf(key));
+      if ((!dragon && !/^Artisan's Splendent /.test(nameOf(key))) || item?.g !== 41 || !['weapon', 'armor', 'accessory'].includes(kind)) continue;
+      // A missing market record cannot confirm zero listings.
+      if (market?.listings == null || Number(market.listings) !== 0) continue;
+      targets.set(key, { id, recipe, key, dragon });
+    }
   }
   if (!targets.size) {
-    list.replaceChildren(); const empty = document.createElement('p'); empty.className = 'recommendationEmpty'; empty.textContent = state.prices.size ? 'Nessun Artisan Splendent senza annunci nei dati disponibili.' : 'In attesa dei prezzi del mercato.'; list.append(empty); return;
+    list.replaceChildren(); const empty = document.createElement('p'); empty.className = 'recommendationEmpty'; empty.textContent = state.prices.size ? 'Nessun equipaggiamento senza annunci nei dati disponibili.' : 'In attesa dei prezzi del mercato.'; list.append(empty); return;
   }
   if (Date.now() - openMarketHistoryCache.at > HISTORY_REFRESH_INTERVAL_MS) {
     const histories = {}; const keys = [...targets.keys()]; let loaded = false;
@@ -564,7 +567,7 @@ async function renderOpenMarketRecommendations() {
   const cards = [...targets.values()].sort((a, b) => nameOf(a.key).localeCompare(nameOf(b.key))).map(entry => {
     const points = (openMarketHistoryCache.histories[entry.key] || getPriceHistory(entry.key)).filter(point => point.t >= Date.now() - HISTORY_LIMIT && Number(point.p) > 0);
     const average = points.length ? points.reduce((sum, point) => sum + Number(point.p), 0) / points.length : null;
-    const cost = model.ownUnit(entry.key).cost;
+    const cost = entry.dragon ? model.ownAttempt(entry.recipe).cost : model.ownUnit(entry.key).cost;
     const card = document.createElement('button'); card.type = 'button'; card.className = 'recommendationCard';
     const head = document.createElement('div'); head.className = 'recommendationHead';
     const text = document.createElement('div'); text.className = 'recommendationText';
