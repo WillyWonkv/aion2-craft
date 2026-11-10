@@ -4,16 +4,42 @@ const $ = id => document.getElementById(id);
 const VAIZEL_SERVER = { server_id: 11303, region: 'EU', name: 'Vaizel', faction: 'Elyos' };
 const state = { graph: null, servers: [VAIZEL_SERVER], prices: new Map(), quickPriceHistory: new Map(), region: 'EU', server: VAIZEL_SERVER.server_id, mode: 'crafting', profession: 'blacksmithing', category: 'all', selected: null, materialMode: 'optimize', fetchedAt: null };
 let modalHistory = null;
+let archivedCalculator = null;
 const format = value => value == null || !Number.isFinite(value) ? '—' : Math.round(value).toLocaleString('it-IT');
 const formatAttempts = value => Number(value).toLocaleString('it-IT', { maximumFractionDigits: 2 });
 const formatPercent = value => Number(value).toLocaleString('it-IT', { maximumFractionDigits: 2 });
+const groupKina = digits => String(digits).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+function setKinaInput(input, initialValue, onChange) {
+  input.type = 'text';
+  input.inputMode = 'numeric';
+  let digits = initialValue === '' ? '' : String(Math.max(0, Math.round(Number(initialValue) || 0)));
+  input.value = groupKina(digits);
+  input.addEventListener('input', () => {
+    const digitsBeforeCaret = input.value.slice(0, input.selectionStart).replace(/\D/g, '').length;
+    const entered = input.value.replace(/[.\s]/g, '');
+    if (/^\d*$/.test(entered) && Number.isSafeInteger(Number(entered))) digits = entered;
+    const grouped = groupKina(digits);
+    if (input.value === grouped) return;
+    input.value = grouped;
+    let caret = 0;
+    let seen = 0;
+    while (caret < grouped.length && seen < digitsBeforeCaret) {
+      if (grouped[caret] !== '.') seen++;
+      caret++;
+    }
+    input.setSelectionRange(caret, caret);
+  });
+  input.addEventListener('change', () => onChange(digits));
+}
 const MAX_CRAFT_SUCCESS = 0.9464;
 const MAX_COMBO_SUCCESS = 0.23 / (MAX_CRAFT_SUCCESS * 0.25);
 const MARKET_TAX_RATE = 0.10;
+const MARKET_LISTING_FEE_RATE = 0.02;
 const AUTO_REFRESH_INTERVAL_MS = 60_000;
 const HISTORY_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 const historyRequests = new Map();
-const netSale = value => value == null ? null : Number(value) * (1 - MARKET_TAX_RATE);
+const netSale = value => value == null ? null : Number(value) * (1 - MARKET_TAX_RATE - MARKET_LISTING_FEE_RATE);
 const QUICK_PRICE_ITEMS = [
   '610511013', '610511015', '610511014',
   '610610013', '610610014', '610610015', '610610016',
@@ -95,6 +121,101 @@ function renderQuickPrices() {
     card.addEventListener('click', () => openMarketModal(key));
     return card;
   }));
+  renderFavorites();
+}
+
+const PRICE_WATCH_LISTS = [
+  { listId: 'buyWatchList', buttonId: 'marketWatchBuy', label: 'Da comprare', storage: 'favorites', selling: false },
+  { listId: 'sellWatchList', buttonId: 'marketWatchSell', label: 'Da vendere', storage: 'watchSell', selling: true },
+];
+
+function priceWatchKey(watch) {
+  return 'aion2craft:' + watch.storage + ':' + state.server;
+}
+
+function readLocalJSON(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
+  catch { return fallback; }
+}
+
+function updateFavoriteButton(key) {
+  for (const watch of PRICE_WATCH_LISTS) {
+    const button = $(watch.buttonId);
+    const storageKey = priceWatchKey(watch);
+    const items = readLocalJSON(storageKey, {});
+    const saved = Object.hasOwn(items, key);
+    button.textContent = saved ? '✓ ' + watch.label : '+ ' + watch.label;
+    button.setAttribute('aria-pressed', String(saved));
+    button.onclick = () => {
+      const latest = readLocalJSON(storageKey, {});
+      if (Object.hasOwn(latest, key)) delete latest[key];
+      else latest[key] = 0;
+      localStorage.setItem(storageKey, JSON.stringify(latest));
+      updateFavoriteButton(key);
+      renderFavorites();
+    };
+  }
+}
+
+function renderFavorites() {
+  for (const watch of PRICE_WATCH_LISTS) renderPriceWatchList(watch);
+}
+
+function renderPriceWatchList(watch) {
+  const list = $(watch.listId);
+  if (!list || list.contains(document.activeElement)) return;
+  const storageKey = priceWatchKey(watch);
+  const favorites = readLocalJSON(storageKey, {});
+  const cards = Object.entries(favorites).map(([key, target]) => {
+    const card = document.createElement('div'); card.className = 'number favoriteCard';
+    const chart = document.createElement('button'); chart.type = 'button'; chart.className = 'watchChartButton';
+    chart.append(iconOf(key, 'quickPriceIcon'), nameOf(key));
+    chart.addEventListener('click', () => openMarketModal(key));
+    const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'watchRemoveButton';
+    remove.textContent = '×';
+    remove.setAttribute('aria-label', 'Rimuovi ' + nameOf(key) + ' da ' + watch.label);
+    remove.addEventListener('click', () => {
+      const latest = readLocalJSON(storageKey, {});
+      delete latest[key];
+      localStorage.setItem(storageKey, JSON.stringify(latest));
+      remove.blur();
+      renderPriceWatchList(watch);
+    });
+    const price = state.prices.get(key)?.price;
+    const current = document.createElement('strong'); current.textContent = price == null ? '—' : format(Number(price)) + ' Kina';
+    const label = document.createElement('label'); label.textContent = watch.selling ? 'Prezzo minimo di vendita lordo (Kina)' : 'Prezzo massimo di acquisto (Kina)';
+    const input = document.createElement('input');
+    label.append(input);
+    const hint = document.createElement('small');
+    const showTarget = value => {
+      const hasComparison = value > 0 && price != null && Number.isFinite(Number(price));
+      const reached = hasComparison && (watch.selling ? Number(price) >= value : Number(price) <= value);
+      card.classList.toggle('price-below', reached);
+      card.classList.toggle('price-above', hasComparison && !reached);
+      if (value <= 0) hint.textContent = 'Imposta un prezzo obiettivo';
+      else if (!hasComparison) hint.textContent = 'Prezzo di mercato non disponibile';
+      else if (reached) hint.textContent = '✓ Prezzo obiettivo raggiunto';
+      else hint.textContent = watch.selling ? 'Prezzo sotto il minimo di vendita' : 'Prezzo sopra il massimo di acquisto';
+    };
+    showTarget(target);
+    setKinaInput(input, target, digits => {
+      const value = Number(digits);
+      const latest = readLocalJSON(storageKey, {});
+      if (!Object.hasOwn(latest, key)) return;
+      latest[key] = value;
+      localStorage.setItem(storageKey, JSON.stringify(latest));
+      input.value = groupKina(value); showTarget(value);
+    });
+    card.append(remove, chart, current, label, hint);
+    if (watch.selling && price != null) {
+      const net = document.createElement('small');
+      net.textContent = 'Netto stimato: ' + format(netSale(price)) + ' Kina';
+      card.append(net);
+    }
+    return card;
+  });
+  list.closest('section').hidden = cards.length === 0;
+  list.replaceChildren(...cards);
 }
 
 function loadSharedHistory(query) {
@@ -290,6 +411,7 @@ function drawPriceChart(itemKey, historyOverride = null) {
 async function openMarketModal(itemKey) {
   const dialog = $('marketModal');
   dialog.dataset.itemKey = String(itemKey);
+  updateFavoriteButton(String(itemKey));
   $('marketModalTitle').textContent = 'Prezzo mercato · ' + nameOf(itemKey);
   $('marketItemIcon').replaceChildren(iconOf(itemKey));
   $('marketPriceSequence').textContent = 'Caricamento dei prezzi osservati…';
@@ -389,7 +511,7 @@ function renderRecommendations() {
     text.append(name); appendItemLevel(text, entry.targetKey || entry.key); text.append(route); head.append(iconOf(entry.targetKey), text, rank);
     const gainLabel = document.createElement('span'); gainLabel.className = 'recommendationGainLabel'; gainLabel.textContent = 'Guadagno stimato';
     const gain = document.createElement('strong'); gain.className = 'recommendationGain'; gain.textContent = '+' + format(entry.profit) + ' Kina';
-    const details = document.createElement('small'); details.className = 'recommendationDetails'; details.textContent = 'Componenti comprati ' + format(entry.cost) + ' → netto dopo tassa 10% ' + format(entry.netMarket) + ' · ' + entry.market.listings + ' annunci';
+    const details = document.createElement('small'); details.className = 'recommendationDetails'; details.textContent = 'Componenti comprati ' + format(entry.cost) + ' → netto dopo vendita 10% e inserzione 2% ' + format(entry.netMarket) + ' · ' + entry.market.listings + ' annunci';
     card.append(head, gainLabel, gain, details);
     card.addEventListener('click', () => {
       state.mode = entry.recipe.type;
@@ -643,6 +765,7 @@ function visibleRecipes() {
 }
 
 function chooseFirst() {
+  archivedCalculator = null;
   state.selected = visibleRecipes()[0]?.[0] || null;
   renderResults();
   renderDetail();
@@ -676,6 +799,15 @@ function fillModes() {
     });
     return button;
   }));
+  if (state.mode === 'calculator') {
+    const history = document.createElement('button');
+    history.type = 'button'; history.className = 'calculatorHistoryButton';
+    history.textContent = '◷';
+    history.title = 'Storico delle sessioni';
+    history.setAttribute('aria-label', history.title);
+    history.addEventListener('click', openCalculatorHistory);
+    $('modes').append(history);
+  }
 }
 
 function fillCategories() {
@@ -756,7 +888,7 @@ function renderResults() {
     sub.className = 'resultMeta';
     appendItemLevel(text, recipe.out); text.append(sub);
     button.append(icons, text);
-    button.addEventListener('click', () => { state.selected = id; renderResults(); renderDetail(); });
+    button.addEventListener('click', () => { archivedCalculator = null; state.selected = id; renderResults(); renderDetail(); });
     list.append(button);
   }
 }
@@ -818,17 +950,88 @@ function addMissingPriceInputs(parent, keys, title) {
   for (const key of [...new Set(keys)]) {
     const row = document.createElement('div'); row.className = 'missingPriceRow';
     const label = document.createElement('label'); label.textContent = nameOf(key);
-    const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.step = '1';
-    input.placeholder = 'Kina / unità'; input.value = localStorage.getItem(overrideKey(key)) || '';
+    const input = document.createElement('input'); input.placeholder = 'Kina / unità';
     input.setAttribute('aria-label', 'Prezzo manuale per ' + nameOf(key));
-    input.addEventListener('change', () => {
-      if (input.value === '') localStorage.removeItem(overrideKey(key));
-      else if (Number.isFinite(Number(input.value)) && Number(input.value) >= 0) localStorage.setItem(overrideKey(key), input.value);
+    setKinaInput(input, localStorage.getItem(overrideKey(key)) || '', digits => {
+      if (digits === '') localStorage.removeItem(overrideKey(key));
+      else localStorage.setItem(overrideKey(key), digits);
       renderRecommendations(); renderDetail();
     });
     row.append(label, input); group.append(row);
   }
   parent.append(group);
+}
+
+function openCalculatorHistory() {
+  const prefix = 'aion2craft:calculator:' + state.server + ':';
+  const historyKeys = () => Object.keys(localStorage).filter(key => key.startsWith(prefix) && key.endsWith(':history'));
+  const dialog = document.createElement('dialog');
+  dialog.className = 'marketModal';
+  dialog.setAttribute('aria-label', 'Storico delle sessioni');
+  const head = document.createElement('div'); head.className = 'marketModalHead';
+  const title = document.createElement('h2'); title.textContent = 'Storico delle sessioni';
+  const close = document.createElement('button'); close.type = 'button'; close.textContent = 'Chiudi';
+  close.addEventListener('click', () => dialog.close());
+  head.append(title, close);
+  const body = document.createElement('div'); body.className = 'marketModalBody';
+  const removeAll = document.createElement('button'); removeAll.type = 'button'; removeAll.className = 'marketButton historyDelete';
+  removeAll.textContent = 'Elimina tutto lo storico';
+  const list = document.createElement('ul'); list.className = 'craftSessionList';
+  const render = () => {
+    const entries = historyKeys().flatMap(key => {
+      const rootId = key.slice(prefix.length, -':history'.length);
+      return readLocalJSON(key, []).map((session, index) => ({ key, rootId, session, index }));
+    }).sort((a, b) => b.session.at - a.session.at);
+    list.replaceChildren();
+    removeAll.hidden = !entries.length;
+    if (!entries.length) {
+      const empty = document.createElement('li'); empty.textContent = 'Nessuna sessione salvata.'; list.append(empty);
+    }
+    for (const { key, rootId, session, index } of entries) {
+      const row = document.createElement('li'); row.className = 'historyEntry';
+      const recipe = state.graph.recipes[rootId];
+      const open = document.createElement('button'); open.type = 'button'; open.className = 'historyEntryOpen';
+      const name = document.createElement('strong'); name.textContent = recipe ? nameOf(recipe.out) : session.result;
+      const date = document.createElement('small'); date.textContent = new Date(session.at).toLocaleString('it-IT');
+      const balance = document.createElement('small'); balance.textContent = 'Saldo ' + (session.profit > 0 ? '+' : '') + format(session.profit) + ' Kina';
+      open.append(name, date, balance); open.disabled = !recipe;
+      const showSession = editing => {
+        state.mode = 'calculator'; state.profession = recipe.p;
+        state.category = categoryOf(recipe); state.selected = rootId;
+        archivedCalculator = { rootId, session, editing, materialMode: session.materialMode ?? state.materialMode };
+        dialog.close();
+        fillModes(); fillProfessions(); fillCategories(); renderResults(); renderDetail();
+        $('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+      open.addEventListener('click', () => showSession(false));
+      const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'marketButton';
+      edit.textContent = 'Modifica'; edit.disabled = !recipe;
+      edit.addEventListener('click', () => showSession(true));
+      const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'marketButton historyDelete';
+      remove.textContent = 'Elimina'; remove.setAttribute('aria-label', 'Elimina sessione ' + name.textContent + ' del ' + date.textContent);
+      remove.addEventListener('click', () => {
+        const sessions = readLocalJSON(key, []);
+        if (JSON.stringify(sessions[index]) !== JSON.stringify(session)) { render(); return; }
+        sessions.splice(index, 1);
+        if (sessions.length) localStorage.setItem(key, JSON.stringify(sessions));
+        else localStorage.removeItem(key);
+        if (archivedCalculator?.rootId === rootId && archivedCalculator.session.at === session.at) {
+          archivedCalculator = null; renderDetail();
+        }
+        render();
+      });
+      row.append(open, edit, remove); list.append(row);
+    }
+  };
+  removeAll.addEventListener('click', () => {
+    if (!confirm('Eliminare tutte le sessioni salvate?')) return;
+    for (const key of historyKeys()) localStorage.removeItem(key);
+    if (archivedCalculator) { archivedCalculator = null; renderDetail(); }
+    render();
+  });
+  body.append(removeAll, list); dialog.append(head, body);
+  dialog.addEventListener('close', () => dialog.remove(), { once: true });
+  document.body.append(dialog); render(); dialog.showModal();
 }
 
 function renderSequenceCalculator(rootId) {
@@ -842,6 +1045,10 @@ function renderSequenceCalculator(rootId) {
   }
 
   const storageKey = 'aion2craft:calculator:' + state.server + ':' + rootId;
+  const savedSession = archivedCalculator?.rootId === rootId ? archivedCalculator : null;
+  const edit = savedSession?.editing ? savedSession : null;
+  const archive = edit ? null : savedSession?.session;
+  const materialMode = edit ? edit.materialMode : state.materialMode;
   const titleRow = document.createElement('div'); titleRow.className = 'titleRow';
   const title = document.createElement('h2'); title.className = 'itemGrade' + gradeClass(root.out); title.textContent = 'Calculator · ' + nameOf(root.out);
   const reset = document.createElement('button');
@@ -849,15 +1056,20 @@ function renderSequenceCalculator(rootId) {
   reset.className = 'marketButton';
   reset.textContent = 'Azzera tutto';
   reset.addEventListener('click', () => {
+    archivedCalculator = null;
     localStorage.removeItem(storageKey);
     renderSequenceCalculator(rootId);
   });
   titleRow.append(iconOf(root.out, 'large'), title, reset); pane.append(titleRow);
   const intro = document.createElement('p'); intro.className = 'calculatorIntro';
-  intro.textContent = 'Inserisci i tentativi e le combo realmente ottenute a ogni passaggio. Per le ricette normali i risultati base sono craft tentati meno combo; nelle ricette rischiose inserisci anche i risultati Lv. 62. Le fasi a zero sono saltate e il ricavo considera solo le combo della fase finale eseguita; al ricavo viene sottratta la tassa del 10%.';
+  intro.textContent = archive
+    ? 'Sessione salvata il ' + new Date(archive.at).toLocaleString('it-IT') + ' · sola lettura. Premi «Azzera tutto» per iniziare una nuova sessione.'
+    : edit ? 'Stai modificando una sessione salvata. I totali sono ricalcolati ai prezzi disponibili.'
+      : 'Inserisci i tentativi e le combo ottenute. Il ricavo considera solo le combo della fase finale, con il 10% di vendita e il 2% di inserzione.';
   pane.append(intro);
 
   const modeWrap = document.createElement('fieldset'); modeWrap.className = 'materialMode';
+  modeWrap.disabled = Boolean(archive);
   const modeLabel = document.createElement('legend'); modeLabel.textContent = 'Come valorizzare i materiali';
   const sourceChoices = document.createElement('div'); sourceChoices.className = 'sourceChoices';
   for (const [value, label, hint] of [
@@ -865,8 +1077,13 @@ function renderSequenceCalculator(rootId) {
     ['market', 'Market', 'Valorizza i materiali al prezzo di mercato'],
   ]) {
     const choice = document.createElement('label'); choice.className = 'sourceChoice';
-    const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'materialMode'; radio.value = value; radio.checked = state.materialMode === value;
-    radio.addEventListener('change', () => { if (radio.checked) { state.materialMode = value; renderDetail(); } });
+    const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'materialMode'; radio.value = value; radio.checked = (archive ? archive.materialMode : materialMode) === value;
+    radio.addEventListener('change', () => {
+      if (!radio.checked) return;
+      if (edit) edit.materialMode = value;
+      else state.materialMode = value;
+      renderDetail();
+    });
     const text = document.createElement('span'); const strong = document.createElement('strong'); strong.textContent = label; const small = document.createElement('small'); small.textContent = hint;
     text.append(strong, small); choice.append(radio, text); sourceChoices.append(choice);
   }
@@ -874,19 +1091,32 @@ function renderSequenceCalculator(rootId) {
 
   let run;
   try { run = JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { run = null; }
+  if (savedSession) {
+    const snapshot = savedSession.session;
+    run = {
+      salePrice: snapshot.salePrice,
+      steps: steps.map(([id, recipe]) => {
+        const saved = snapshot.stages.find(stage => stage.id ? stage.id === id : stage.name === nameOf(recipe.out));
+        return saved ? { ...saved } : { crafts: 0, normal: 0, combo: 0 };
+      }),
+    };
+    if (edit) run = edit.draft ??= run;
+  }
   if (!run || !Array.isArray(run.steps) || run.steps.length !== steps.length) run = { steps: steps.map(() => ({ crafts: 0, normal: 0, combo: 0 })) };
   const faction = serverFaction() === 'Asmodian' ? 'dark' : 'light';
   const model = createCostModel(state.graph, unitPrice, faction, key => localStorage.getItem(overrideKey(key)) === '0', {
-    optimizeMaterials: state.materialMode === 'optimize',
+    optimizeMaterials: materialMode === 'optimize',
     successRateFor: id => state.graph.recipes[id]?.successChance != null ? MAX_CRAFT_SUCCESS : undefined,
     comboSuccessRateFor: id => state.graph.recipes[id]?.comboSuccessChance != null ? MAX_COMBO_SUCCESS : undefined,
   });
   const total = { cost: 0, revenue: 0, missingCosts: new Set(), missingSales: new Set(), invalid: false };
   const lastActiveStage = run.steps.reduce((last, step, index) => Number(step.crafts) > 0 ? index : last, -1);
+  const savedStages = [];
 
   for (let index = 0; index < steps.length; index++) {
     const [recipeId, recipe] = steps[index];
     const values = run.steps[index];
+    const hasNormalCount = values.normal != null;
     values.crafts = Math.max(0, Number(values.crafts) || 0);
     values.normal = Math.max(0, Number(values.normal) || 0);
     values.combo = Math.max(0, Number(values.combo) || 0);
@@ -921,7 +1151,10 @@ function renderSequenceCalculator(rootId) {
         expected.title = values.crafts + ' craft × 75%: risultati normali teorici, prima degli eventuali fallimenti';
         label.append(expected);
       }
-      const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.step = '1'; input.value = String(values[field]); input.setAttribute('aria-label', labelText + ' · ' + nameOf(recipe.out));
+      const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.step = '1';
+      input.value = archive && field === 'normal' && !hasNormalCount ? '' : String(values[field]);
+      input.setAttribute('aria-label', labelText + ' · ' + nameOf(recipe.out));
+      input.readOnly = Boolean(archive);
       input.addEventListener('change', () => {
         const nextValue = Math.max(0, Math.floor(Number(input.value) || 0));
         values[field] = nextValue;
@@ -930,12 +1163,13 @@ function renderSequenceCalculator(rootId) {
           const consumedPerCraft = nextRecipe.in.find(([key]) => String(key) === String(recipe.combo))?.[1] || 1;
           run.steps[index + 1].crafts = Math.floor(nextValue / Number(consumedPerCraft));
         }
-        localStorage.setItem(storageKey, JSON.stringify(run));
+        if (!edit) localStorage.setItem(storageKey, JSON.stringify(run));
         renderDetail();
       });
       wrap.append(label, input); fields.append(wrap);
     }
     stage.append(fields);
+    if (archive) { pane.append(stage); continue; }
 
     if (!values.crafts) {
       const skipped = document.createElement('div'); skipped.className = 'calculatorStageCost'; skipped.textContent = 'Fase non eseguita · esclusa dal calcolo';
@@ -956,6 +1190,7 @@ function renderSequenceCalculator(rootId) {
     if (values.crafts) for (const key of stageMissingCosts) total.missingCosts.add(key);
     const stageCost = values.crafts && stageMissingCosts.size ? null : unitCost * values.crafts;
     if (stageCost != null) total.cost += stageCost;
+    savedStages.push({ id: recipeId, name: nameOf(recipe.out), crafts: values.crafts, normal: values.normal, combo: values.combo });
 
     const normalCount = risky ? values.normal : Math.max(0, values.crafts * (Number(recipe.outq) || 1) - values.combo);
     const normalPrice = unitPrice(String(recipe.out));
@@ -977,32 +1212,67 @@ function renderSequenceCalculator(rootId) {
     stage.append(costNote); pane.append(stage);
   }
 
-  const spent = total.missingCosts.size ? null : total.cost;
-  const revenue = total.missingSales.size ? null : total.revenue;
-  const profit = spent == null || revenue == null || total.invalid ? null : revenue - spent;
+  const spent = archive ? archive.spent : total.missingCosts.size ? null : total.cost;
+  const revenue = archive ? archive.revenue : total.missingSales.size ? null : total.revenue;
+  const profit = archive ? archive.profit : spent == null || revenue == null || total.invalid ? null : revenue - spent;
   const summary = document.createElement('div'); summary.className = 'numbers calculatorTotals';
   summary.append(
-    box('Spesa totale stimata', spent == null ? 'Incompleta' : format(spent) + ' Kina', state.materialMode === 'optimize' ? 'Materiali valorizzati con il metodo meno caro' : 'Materiali valorizzati al mercato', spent == null ? 'warn' : ''),
-    box('Ricavo netto stimato', revenue == null ? 'Incompleto' : format(revenue) + ' Kina', (Number(run.salePrice) > 0 ? 'Prezzo personale' : 'Prezzo di mercato') + ' meno tassa di vendita 10%', revenue == null ? 'warn' : 'accent'),
+    box('Spesa totale stimata', spent == null ? 'Incompleta' : format(spent) + ' Kina', archive ? 'Valore salvato' : materialMode === 'optimize' ? 'Materiali valorizzati con il metodo meno caro' : 'Materiali valorizzati al mercato', spent == null ? 'warn' : ''),
+    box('Ricavo netto stimato', revenue == null ? 'Incompleto' : format(revenue) + ' Kina', archive ? 'Valore salvato' : (Number(run.salePrice) > 0 ? 'Prezzo personale' : 'Prezzo di mercato') + ' meno vendita 10% e inserzione 2%', revenue == null ? 'warn' : 'accent'),
     box(profit == null ? 'Guadagno / perdita' : profit >= 0 ? 'Guadagno netto' : 'Perdita netta', profit == null ? '—' : (profit >= 0 ? '+' : '−') + format(Math.abs(profit)) + ' Kina', 'Ricavo netto − spesa totale', 'outcomeProfit ' + (profit == null ? '' : profit >= 0 ? 'gain' : 'loss'))
   );
   const saleCard = document.createElement('div'); saleCard.className = 'number';
   const saleLabel = document.createElement('label'); saleLabel.htmlFor = 'calculatorSalePrice'; saleLabel.textContent = 'Prezzo di vendita per pezzo';
-  const saleInput = document.createElement('input'); saleInput.id = 'calculatorSalePrice'; saleInput.type = 'number'; saleInput.min = '0'; saleInput.step = '1'; saleInput.value = String(Math.max(0, Number(run.salePrice) || 0));
-  saleInput.addEventListener('change', () => {
-    run.salePrice = Math.max(0, Number(saleInput.value) || 0);
-    localStorage.setItem(storageKey, JSON.stringify(run)); renderDetail();
+  const saleInput = document.createElement('input'); saleInput.id = 'calculatorSalePrice';
+  saleInput.readOnly = Boolean(archive);
+  setKinaInput(saleInput, run.salePrice ?? (archive ? '' : 0), digits => {
+    run.salePrice = Number(digits);
+    if (!edit) localStorage.setItem(storageKey, JSON.stringify(run));
+    renderDetail();
   });
-  const saleHint = document.createElement('small'); saleHint.textContent = 'In Kina, prima delle tasse. Con 0 usa il mercato. Il prezzo si applica alle combo finali.';
+  const saleHint = document.createElement('small');
+  saleHint.textContent = archive && run.salePrice == null ? 'Prezzo personale non registrato in questa sessione.' : 'In Kina, prima delle tasse. Con 0 usa il mercato. Il prezzo si applica alle combo finali.';
   saleCard.append(saleLabel, saleInput, saleHint); summary.append(saleCard);
   pane.append(summary);
+  if (archive) return;
+  const historyKey = storageKey + ':history';
+  const save = document.createElement('button'); save.type = 'button'; save.className = 'marketButton';
+  save.textContent = edit ? 'Salva modifiche' : 'Salva sessione';
+  save.disabled = lastActiveStage < 0 || profit == null;
+  save.addEventListener('click', () => {
+    const sessions = readLocalJSON(historyKey, []);
+    const result = nameOf(steps[lastActiveStage][1].combo);
+    const session = { at: edit ? edit.session.at : Date.now(), result, spent, revenue, profit, stages: savedStages, salePrice: Number(run.salePrice) || 0, materialMode };
+    if (edit) {
+      const index = sessions.findIndex(item => JSON.stringify(item) === JSON.stringify(edit.session));
+      if (index < 0) {
+        save.disabled = true; save.textContent = 'Sessione non più disponibile';
+        return;
+      }
+      sessions[index] = session;
+    } else sessions.unshift(session);
+    localStorage.setItem(historyKey, JSON.stringify(sessions.slice(0, 50)));
+    if (edit) {
+      archivedCalculator = { rootId, session };
+      renderDetail();
+      return;
+    }
+    save.disabled = true; save.textContent = 'Sessione salvata';
+  });
+  const saveRow = document.createElement('div'); saveRow.className = 'calculatorSaveRow';
+  if (edit) {
+    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'marketButton'; cancel.textContent = 'Annulla modifica';
+    cancel.addEventListener('click', () => { archivedCalculator = { rootId, session: edit.session }; renderDetail(); });
+    saveRow.append(cancel);
+  }
+  saveRow.append(save); pane.append(saveRow);
   if (total.invalid) {
     const warning = document.createElement('p'); warning.className = 'buyFinishedAdvice';
     warning.textContent = 'Controlla i risultati inseriti: hai indicato più pezzi prodotti dei craft tentati oppure hai usato più combo di quante ne avevi disponibili.';
     pane.append(warning);
   }
   const footnote = document.createElement('p'); footnote.className = 'calculatorNote';
-  footnote.textContent = 'I prezzi di vendita mancanti o i prezzi dei materiali mancanti rendono il totale incompleto. Le fasi a zero sono escluse. Il ricavo considera solo le combo della fase finale eseguita; risultati normali e combo intermedie rimaste sono esclusi. I risultati inseriti sono quelli reali della tua sessione; commissioni di inserzione escluse.';
+  footnote.textContent = 'I prezzi di vendita mancanti o i prezzi dei materiali mancanti rendono il totale incompleto. Le fasi a zero sono escluse. Il ricavo considera solo le combo della fase finale eseguita; risultati normali e combo intermedie rimaste sono esclusi. I risultati inseriti sono quelli reali della tua sessione; il calcolo include una sola inserzione per pezzo.';
   pane.append(footnote);
   if (total.missingCosts.size) addMissingPriceInputs(pane, [...total.missingCosts], 'Inserisci i prezzi mancanti dei materiali');
   if (total.missingSales.size) addMissingPriceInputs(pane, [...total.missingSales], 'Inserisci i prezzi mancanti dei risultati');
@@ -1078,13 +1348,14 @@ function renderTransferCosts(pane, recipe, craftCount) {
     if (row.transfer) {
       const source = document.createElement('span'); source.className = 'sourceTag'; source.textContent = boundTransferItems.has(row.key) ? 'Oggetto vincolato · costo dei trasferimenti precedenti' : row.market?.price != null && row.market.listings > 0 ? format(row.market.price) + ' Kina · ' + row.market.listings + ' annunci' : 'Nessun annuncio disponibile'; marketCell.append(source);
     } else {
-      const input = document.createElement('input'); input.className = 'priceInput'; input.type = 'number'; input.min = '0'; input.step = '1';
-      input.placeholder = row.market?.price == null ? (GLOBAL_VENDOR_PRICES[row.key] == null ? 'Mancante' : String(GLOBAL_VENDOR_PRICES[row.key])) : String(row.market.price);
-      const manualValue = localStorage.getItem(overrideKey(row.key)); input.value = manualValue || '';
+      const input = document.createElement('input'); input.className = 'priceInput';
+      const marketPrice = row.market?.price ?? GLOBAL_VENDOR_PRICES[row.key];
+      input.placeholder = marketPrice == null ? 'Mancante' : groupKina(Math.round(marketPrice));
+      const manualValue = localStorage.getItem(overrideKey(row.key));
       input.setAttribute('aria-label', 'Prezzo manuale per ' + nameOf(row.key));
-      input.addEventListener('change', () => {
-        if (input.value === '') localStorage.removeItem(overrideKey(row.key));
-        else if (Number.isFinite(Number(input.value)) && Number(input.value) >= 0) localStorage.setItem(overrideKey(row.key), input.value);
+      setKinaInput(input, manualValue || '', digits => {
+        if (digits === '') localStorage.removeItem(overrideKey(row.key));
+        else localStorage.setItem(overrideKey(row.key), digits);
         renderRecommendations(); renderDetail();
       });
       const source = document.createElement('div'); source.className = 'sourceTag';
@@ -1235,28 +1506,26 @@ function renderDetail() {
       box('Prezzo mercato combo Lv. 70', marketUnitPrice == null ? '—' : format(marketUnitPrice) + ' Kina', output ? (output.listings || 0) + ' annunci · prezzo minimo' : 'Nessun annuncio')
     );
     summaryCards.push(
-      box('Ricavo netto Lv. 62', level62Net == null ? '—' : format(level62Net) + ' Kina', 'Prezzo mercato meno tassa di vendita 10%'),
-      box('Ricavo netto combo Lv. 70', level70Net == null ? '—' : format(level70Net) + ' Kina', 'Prezzo mercato meno tassa di vendita 10%')
+      box('Ricavo netto Lv. 62', level62Net == null ? '—' : format(level62Net) + ' Kina', 'Prezzo mercato meno vendita 10% e inserzione 2%'),
+      box('Ricavo netto combo Lv. 70', level70Net == null ? '—' : format(level70Net) + ' Kina', 'Prezzo mercato meno vendita 10% e inserzione 2%')
     );
     summaryCards.push(
-      box('Guadagno / perdita netta se esce Lv. 62', level62Profit == null ? '—' : (level62Profit >= 0 ? '+' : '−') + format(Math.abs(level62Profit)) + ' Kina', level62Profit == null ? 'Servono costo craftato e prezzo Lv. 62' : 'Ricavo netto Lv. 62 − costo di 1 craft · inserzione esclusa', 'outcomeProfit ' + (level62Profit == null ? '' : level62Profit >= 0 ? 'gain' : 'loss')),
-      box('Guadagno / perdita netta se esce combo Lv. 70', level70Profit == null ? '—' : (level70Profit >= 0 ? '+' : '−') + format(Math.abs(level70Profit)) + ' Kina', level70Profit == null ? 'Servono costo craftato e prezzo Lv. 70' : 'Ricavo netto Lv. 70 − costo di 1 craft · inserzione esclusa', 'outcomeProfit ' + (level70Profit == null ? '' : level70Profit >= 0 ? 'gain' : 'loss'))
+      box('Guadagno / perdita netta se esce Lv. 62', level62Profit == null ? '—' : (level62Profit >= 0 ? '+' : '−') + format(Math.abs(level62Profit)) + ' Kina', level62Profit == null ? 'Servono costo craftato e prezzo Lv. 62' : 'Ricavo netto Lv. 62 − costo di 1 craft', 'outcomeProfit ' + (level62Profit == null ? '' : level62Profit >= 0 ? 'gain' : 'loss')),
+      box('Guadagno / perdita netta se esce combo Lv. 70', level70Profit == null ? '—' : (level70Profit >= 0 ? '+' : '−') + format(Math.abs(level70Profit)) + ' Kina', level70Profit == null ? 'Servono costo craftato e prezzo Lv. 70' : 'Ricavo netto Lv. 70 − costo di 1 craft', 'outcomeProfit ' + (level70Profit == null ? '' : level70Profit >= 0 ? 'gain' : 'loss'))
     );
   } else {
-    summaryCards.push(box('Prezzo mercato / 1 ' + resultLabel, marketUnitPrice == null ? '—' : format(marketUnitPrice) + ' Kina', recipe.bound ? 'Risultato vincolato: non vendibile' : output ? (output.listings || 0) + ' annunci · netto tassa 10%: ' + format(marketUnitNet) + ' Kina' : 'Nessun annuncio'));
-    summaryCards.push(box('Guadagno / perdita netta per 1 ' + resultLabel, unitProfit == null ? '—' : (unitProfit >= 0 ? '+' : '−') + format(Math.abs(unitProfit)) + ' Kina', unitProfit == null ? 'Servono costo craftato e prezzo di mercato' : 'Ricavo netto − costo medio craftato · inserzione esclusa', 'profitResult ' + (unitProfit == null ? '' : unitProfit >= 0 ? 'gain' : 'loss')));
+    summaryCards.push(box('Prezzo mercato / 1 ' + resultLabel, marketUnitPrice == null ? '—' : format(marketUnitPrice) + ' Kina', recipe.bound ? 'Risultato vincolato: non vendibile' : output ? (output.listings || 0) + ' annunci · netto dopo commissioni: ' + format(marketUnitNet) + ' Kina' : 'Nessun annuncio'));
+    summaryCards.push(box('Guadagno / perdita netta per 1 ' + resultLabel, unitProfit == null ? '—' : (unitProfit >= 0 ? '+' : '−') + format(Math.abs(unitProfit)) + ' Kina', unitProfit == null ? 'Servono costo craftato e prezzo di mercato' : 'Ricavo netto − costo medio craftato', 'profitResult ' + (unitProfit == null ? '' : unitProfit >= 0 ? 'gain' : 'loss')));
   }
   numbers.append(...summaryCards);
   pane.append(numbers);
-  const buyFinishedLoss = isLevel70Combo
-    ? [level62Profit, level70Profit].some(profit => profit != null && profit < 0)
-    : !recipe.bound && unitProfit != null && unitProfit < 0;
-  if (buyFinishedLoss) {
+  const buyFinishedCheaper = !recipe.bound && (isLevel70Combo
+    ? ownAttempt.cost != null && [level62Price, marketUnitPrice].some(price => price != null && price < ownAttempt.cost)
+    : ownUnitCost != null && marketUnitPrice != null && marketUnitPrice < ownUnitCost);
+  if (buyFinishedCheaper) {
     const advice = document.createElement('p');
     advice.className = 'buyFinishedAdvice';
-    advice.textContent = isLevel70Combo
-      ? 'Compra il prodotto finito per i risultati in perdita: il suo prezzo di mercato, tolta la tassa del 10%, è inferiore al costo di un craft.'
-      : 'Conviene comprare l’oggetto finito: il suo prezzo di mercato, tolta la tassa del 10%, è inferiore al costo dei materiali per craftarlo.';
+    advice.textContent = 'Il prezzo di acquisto del prodotto finito è inferiore al costo craftato.';
     pane.append(advice);
   }
   const heading = document.createElement('h3'); heading.textContent = recipe.transferFrom ? 'Equipaggiamento e materiali necessari' : 'Materiali necessari'; pane.append(heading);
@@ -1274,14 +1543,14 @@ function renderDetail() {
     nameWrap.append(iconOf(row.key), nameText); name.append(nameWrap);
     const count = document.createElement('td'); count.textContent = formatAttempts(row.count);
     const priceCell = document.createElement('td');
-    const input = document.createElement('input'); input.className = 'priceInput'; input.type = 'number'; input.min = '0'; input.step = '1';
-    input.placeholder = row.market?.price == null ? (GLOBAL_VENDOR_PRICES[row.key] == null ? 'Mancante' : String(GLOBAL_VENDOR_PRICES[row.key])) : String(row.market.price);
+    const input = document.createElement('input'); input.className = 'priceInput';
+    const marketPrice = row.market?.price ?? GLOBAL_VENDOR_PRICES[row.key];
+    input.placeholder = marketPrice == null ? 'Mancante' : groupKina(Math.round(marketPrice));
     const manualValue = localStorage.getItem(overrideKey(row.key));
-    input.value = manualValue || '';
     input.setAttribute('aria-label', 'Prezzo manuale per ' + nameOf(row.key));
-    input.addEventListener('change', () => {
-      if (input.value === '') localStorage.removeItem(overrideKey(row.key));
-      else if (Number.isFinite(Number(input.value)) && Number(input.value) >= 0) localStorage.setItem(overrideKey(row.key), input.value);
+    setKinaInput(input, manualValue || '', digits => {
+      if (digits === '') localStorage.removeItem(overrideKey(row.key));
+      else localStorage.setItem(overrideKey(row.key), digits);
       renderRecommendations(); renderDetail();
     });
     const source = document.createElement('div'); source.className = 'sourceTag';
