@@ -59,12 +59,13 @@ $html = @'
     #openMarketList{max-height:420px;align-content:start;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
     #openMarketList::-webkit-scrollbar{display:none}
     .openMarketHeading{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.openMarketFilters{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}.openMarketFilters .marketButton{margin:0}.openMarketFilters [aria-pressed=true]{background:#87ccfa;color:#122338;border-color:#87ccfa}
+    .marketChartInteractive{position:relative}.marketChartInteractive canvas{cursor:crosshair}.marketChartCrosshair{position:absolute;width:0;border-left:1px dashed #b6d5f399;pointer-events:none}.marketChartTooltip{position:absolute;z-index:2;max-width:calc(100% - 8px);box-sizing:border-box;padding:9px 12px;border:1px solid #80cfff;border-radius:8px;background:#101d2ff5;box-shadow:0 5px 18px #0008;pointer-events:none}.marketChartTooltip strong,.marketChartTooltip span{display:block;white-space:nowrap}.marketChartTooltip strong{color:#edf5ff;font-size:14px}.marketChartTooltip span{margin-top:4px;color:#b3c8df;font-size:11px}
   </style>
 </head>
 <body>
   <div class="shell">
     <header class="top"><h1 class="gameBrand"><img src="https://raw.githubusercontent.com/xtopolis/aion2-static/main/src/assets/logo-aion2.png" alt=""><span class="gameBrandTitle">Aion 2 <span>Craft</span></span></h1><div class="headerTags"><div class="creatorTag">Creato da <strong>WillyWonka</strong></div><div class="badge">Vaizel · Europa · Elyos</div></div></header>
-    <dialog id="marketModal" class="marketModal" aria-labelledby="marketModalTitle"><div class="marketModalHead"><div class="marketHeading"><div id="marketItemIcon"></div><div><h2 id="marketModalTitle">Prezzo mercato</h2><p id="marketPriceSequence" class="marketPriceSequence">Prezzi osservati</p></div></div><div class="marketHeaderActions"><button id="marketWatchBuy" type="button" aria-pressed="false">+ Da comprare</button><button id="marketWatchSell" type="button" aria-pressed="false">+ Da vendere</button><button id="closeMarketModal" type="button" aria-label="Chiudi">Chiudi</button></div></div><div class="marketModalBody"><div class="marketCurrent"><strong id="marketModalCurrent">—</strong><small id="marketModalCount">Nessuna rilevazione</small></div><div class="marketChartCaption"><span>Prezzo (Kina)</span><span>ULTIMI 7 GIORNI</span></div><canvas id="marketChart" class="marketChart" aria-label="Grafico dello storico prezzi"></canvas><div class="marketTimeLabel">Orario</div><div class="marketChartInfo"><span aria-hidden="true">ⓘ</span><p>Il prezzo resta piatto finché non arriva una nuova rilevazione diversa.</p></div><div class="marketLegend"><span><i></i>Prezzo sotto la media</span><span><i class="legendRed"></i>Prezzo sopra la media</span><span><i class="legendAverage"></i>Media delle rilevazioni</span></div><div id="marketStats" class="marketStats" aria-label="Statistiche del prezzo nelle ultime 7 giorni"></div><div id="marketSummary" class="marketSummary equal"></div><p class="marketExplain">La linea tratteggiata indica la media dei prezzi registrati nelle ultime 7 giorni. Verde: prezzo sotto la media; rosso: prezzo sopra la media. Il collector salva una rilevazione al minuto anche quando la pagina è chiusa. Quando lo storico è appena iniziato, la linea può sembrare quasi retta: diventa più dettagliata man mano che si accumulano punti. È un confronto storico, non una previsione.</p></div></dialog>
+    <dialog id="marketModal" class="marketModal" aria-labelledby="marketModalTitle"><div class="marketModalHead"><div class="marketHeading"><div id="marketItemIcon"></div><div><h2 id="marketModalTitle">Prezzo mercato</h2><p id="marketPriceSequence" class="marketPriceSequence">Prezzi osservati</p></div></div><div class="marketHeaderActions"><button id="marketWatchBuy" type="button" aria-pressed="false">+ Da comprare</button><button id="marketWatchSell" type="button" aria-pressed="false">+ Da vendere</button><button id="closeMarketModal" type="button" aria-label="Chiudi">Chiudi</button></div></div><div class="marketModalBody"><div class="marketCurrent"><strong id="marketModalCurrent">—</strong><small id="marketModalCount">Nessuna rilevazione</small></div><div class="marketChartCaption"><span>Prezzo (Kina)</span><span>ULTIMI 7 GIORNI</span></div><div class="marketChartInteractive"><canvas id="marketChart" class="marketChart" aria-label="Grafico dello storico prezzi"></canvas><div id="marketChartCrosshair" class="marketChartCrosshair" hidden></div><div id="marketChartTooltip" class="marketChartTooltip" role="status" hidden></div></div><div class="marketTimeLabel">Orario</div><div class="marketChartInfo"><span aria-hidden="true">ⓘ</span><p>Il prezzo resta piatto finché non arriva una nuova rilevazione diversa.</p></div><div class="marketLegend"><span><i></i>Prezzo sotto la media</span><span><i class="legendRed"></i>Prezzo sopra la media</span><span><i class="legendAverage"></i>Media delle rilevazioni</span></div><div id="marketStats" class="marketStats" aria-label="Statistiche del prezzo nelle ultime 7 giorni"></div><div id="marketSummary" class="marketSummary equal"></div><p class="marketExplain">La linea tratteggiata indica la media dei prezzi registrati nelle ultime 7 giorni. Verde: prezzo sotto la media; rosso: prezzo sopra la media. Il collector salva una rilevazione al minuto anche quando la pagina è chiusa. Quando lo storico è appena iniziato, la linea può sembrare quasi retta: diventa più dettagliata man mano che si accumulano punti. È un confronto storico, non una previsione.</p></div></dialog>
     <div id="status" class="status" role="status" aria-live="polite">Caricamento ricette e prezzi di Vaizel…</div>
     <section class="recommendations" aria-labelledby="recommendationsTitle"><h2 id="recommendationsTitle">Craft consigliati</h2><p>Confronta costo dei materiali e ricavo dopo il 10% di vendita e il 2% di inserzione.</p><div id="recommendationList" class="recommendationList"></div></section>
     <section class="recommendations" aria-labelledby="buyRecommendationsTitle"><h2 id="buyRecommendationsTitle">Acquisti consigliati</h2><p>Artisan's Splendent, True Dragon Lord Lv. 62 e Splendent True Dragon Lord Lv. 70: fino a 10 oggetti che costano meno comprati che craftati. Risparmio = costo craftato meno prezzo di acquisto, senza tassa di vendita.</p><div id="buyRecommendationList" class="recommendationList"></div></section>
@@ -373,6 +374,13 @@ function getPriceHistory(itemKey) {
 
 function drawPriceChart(itemKey, historyOverride = null) {
   const canvas = $('marketChart');
+  const tooltip = $('marketChartTooltip');
+  const crosshair = $('marketChartCrosshair');
+  tooltip.hidden = true;
+  crosshair.hidden = true;
+  canvas.onpointermove = null;
+  canvas.onpointerleave = null;
+  canvas.onpointerdown = null;
   const context = canvas.getContext('2d');
   const bounds = canvas.getBoundingClientRect();
   const ratio = window.devicePixelRatio || 1;
@@ -493,6 +501,38 @@ function drawPriceChart(itemKey, historyOverride = null) {
     }
     context.fillStyle = '#edf5ff'; context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(label, left + labelW / 2, top + 12);
   }
+  const inspect = event => {
+    const rect = canvas.getBoundingClientRect();
+    const pointerX = event.clientX - rect.left;
+    const pointerY = event.clientY - rect.top;
+    if (pointerX < pad.l || pointerX > pad.l + plotW || pointerY < pad.t || pointerY > pad.t + plotH) {
+      tooltip.hidden = true; crosshair.hidden = true; return;
+    }
+    const timestamp = start + (pointerX - pad.l) / plotW * timeRange;
+    // On a step, show the last observed price before the pointer's timestamp.
+    let left = 0, right = points.length - 1;
+    while (left < right) {
+      const middle = Math.ceil((left + right) / 2);
+      if (Number(points[middle].t) <= timestamp) left = middle;
+      else right = middle - 1;
+    }
+    const point = points[left];
+    tooltip.replaceChildren();
+    const price = document.createElement('strong'); price.textContent = format(Number(point.p)) + ' Kina';
+    const time = document.createElement('span'); time.textContent = new Date(Number(point.t)).toLocaleString('it-IT');
+    tooltip.append(price, time);
+    tooltip.style.borderColor = Number(point.p) <= average ? '#51e39a' : '#ff6e76';
+    tooltip.hidden = false;
+    tooltip.style.left = Math.max(4, Math.min(width - tooltip.offsetWidth - 4, pointerX + 14)) + 'px';
+    tooltip.style.top = Math.max(4, Math.min(height - tooltip.offsetHeight - 4, y(point.p) - tooltip.offsetHeight - 12)) + 'px';
+    crosshair.style.left = pointerX + 'px';
+    crosshair.style.top = pad.t + 'px';
+    crosshair.style.height = plotH + 'px';
+    crosshair.hidden = false;
+  };
+  canvas.onpointermove = inspect;
+  canvas.onpointerdown = inspect;
+  canvas.onpointerleave = () => { tooltip.hidden = true; crosshair.hidden = true; };
   return { points, average, current: currentValue, min: dataMin, max: dataMax };
 }
 

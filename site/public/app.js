@@ -285,6 +285,13 @@ function getPriceHistory(itemKey) {
 
 function drawPriceChart(itemKey, historyOverride = null) {
   const canvas = $('marketChart');
+  const tooltip = $('marketChartTooltip');
+  const crosshair = $('marketChartCrosshair');
+  tooltip.hidden = true;
+  crosshair.hidden = true;
+  canvas.onpointermove = null;
+  canvas.onpointerleave = null;
+  canvas.onpointerdown = null;
   const context = canvas.getContext('2d');
   const bounds = canvas.getBoundingClientRect();
   const ratio = window.devicePixelRatio || 1;
@@ -405,6 +412,38 @@ function drawPriceChart(itemKey, historyOverride = null) {
     }
     context.fillStyle = '#edf5ff'; context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(label, left + labelW / 2, top + 12);
   }
+  const inspect = event => {
+    const rect = canvas.getBoundingClientRect();
+    const pointerX = event.clientX - rect.left;
+    const pointerY = event.clientY - rect.top;
+    if (pointerX < pad.l || pointerX > pad.l + plotW || pointerY < pad.t || pointerY > pad.t + plotH) {
+      tooltip.hidden = true; crosshair.hidden = true; return;
+    }
+    const timestamp = start + (pointerX - pad.l) / plotW * timeRange;
+    // On a step, show the last observed price before the pointer's timestamp.
+    let left = 0, right = points.length - 1;
+    while (left < right) {
+      const middle = Math.ceil((left + right) / 2);
+      if (Number(points[middle].t) <= timestamp) left = middle;
+      else right = middle - 1;
+    }
+    const point = points[left];
+    tooltip.replaceChildren();
+    const price = document.createElement('strong'); price.textContent = format(Number(point.p)) + ' Kina';
+    const time = document.createElement('span'); time.textContent = new Date(Number(point.t)).toLocaleString('it-IT');
+    tooltip.append(price, time);
+    tooltip.style.borderColor = Number(point.p) <= average ? '#51e39a' : '#ff6e76';
+    tooltip.hidden = false;
+    tooltip.style.left = Math.max(4, Math.min(width - tooltip.offsetWidth - 4, pointerX + 14)) + 'px';
+    tooltip.style.top = Math.max(4, Math.min(height - tooltip.offsetHeight - 4, y(point.p) - tooltip.offsetHeight - 12)) + 'px';
+    crosshair.style.left = pointerX + 'px';
+    crosshair.style.top = pad.t + 'px';
+    crosshair.style.height = plotH + 'px';
+    crosshair.hidden = false;
+  };
+  canvas.onpointermove = inspect;
+  canvas.onpointerdown = inspect;
+  canvas.onpointerleave = () => { tooltip.hidden = true; crosshair.hidden = true; };
   return { points, average, current: currentValue, min: dataMin, max: dataMax };
 }
 
